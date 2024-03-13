@@ -22,7 +22,8 @@ ifeq ($(ARCH),aarch64)
 ARCH = arm64
 endif
 
-arches := amd64 arm64
+# rpardini: arm64 very soon again
+arches := amd64 
 modes := rel dbg
 
 hook-bootkit-deps := $(wildcard hook-bootkit/*)

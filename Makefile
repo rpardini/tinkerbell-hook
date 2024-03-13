@@ -2,7 +2,7 @@
 ### !!NOTE!!
 # If this is changed then a fresh output dir is required (`git clean -fxd` or just `rm -rf out`)
 # Handling this better shows some of make's suckiness compared to newer build tools (redo, tup ...) where the command lines to tools invoked isn't tracked by make
-ORG := ghcr.io/rpardini/tinkerbell
+ORG := quay.io/tinkerbellrpardini
 # makes sure there's no trailing / so we can just add them in the recipes which looks nicer
 ORG := $(shell echo "${ORG}" | sed 's|/*$$||')
 
