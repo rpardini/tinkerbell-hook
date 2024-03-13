@@ -1,4 +1,4 @@
-FROM alpine:3 AS kernel-build
+FROM alpine:3 AS kernel-config
 RUN apk add \
     argp-standalone \
     automake \
@@ -126,6 +126,13 @@ RUN set -x && case $(uname -m) in \
     make oldconfig && \
     if [ -z "${EXTRA}" ] && [ -z "${DEBUG}" ]; then diff -u .config ${KERNEL_DEF_CONF} || true; fi
 
+FROM kernel-config as kernel-configurator
+WORKDIR /linux
+VOLUME /out-config
+ENTRYPOINT ["/bin/sh"]
+
+
+FROM kernel-config AS kernel-build
 
 # Kernel
 RUN set -x && case $(uname -m) in \
