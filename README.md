@@ -1,3 +1,10 @@
+# rpardini's findings
+
+- You need linuxkit version 1.0.1 exactly
+- You need docker-ce from Docker, not the Ubuntu/Debian docker.io package, even though that has buildx
+- You need `pigz` installed
+- You need a quay.io or other OCI registry available you can push to
+
 # Hook
 
 Hook is the Tinkerbell Installation Environment for bare-metal.
