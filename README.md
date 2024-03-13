@@ -1,6 +1,8 @@
 # rpardini's findings
 
 - You need linuxkit version 1.0.1 exactly
+  - arm64: https://github.com/linuxkit/linuxkit/releases/download/v1.0.1/linuxkit-linux-arm64
+  - amd64: https://github.com/linuxkit/linuxkit/releases/download/v1.0.1/linuxkit-linux-amd64
 - You need docker-ce from Docker, not the Ubuntu/Debian docker.io package, even though that has buildx
 - You need `pigz` installed
 - You need a quay.io or other OCI registry available you can push to
