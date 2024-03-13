@@ -103,12 +103,13 @@ endif
 devbuild_$(2)$(3)$(4): Dockerfile Makefile $(wildcard patches-$(2)/*) $(wildcard config-$(2)*) config-dbg
 	docker buildx build \
 		--load \
+		--progress=plain \
 		--build-arg KERNEL_VERSION=$(1) \
 		--build-arg KERNEL_SERIES=$(2) \
 		--build-arg EXTRA=$(3) \
 		--build-arg DEBUG=$(4) \
 		$(LABELS) \
-		--no-cache -t $(ORG)/$(IMAGE):$(1)$(3)$(4)-$(TAG) .
+		 -t $(ORG)/$(IMAGE):$(1)$(3)$(4)-$(TAG) .
 
 
 build_$(2)$(3)$(4): Dockerfile Makefile $(wildcard patches-$(2)/*) $(wildcard config-$(2)*) config-dbg
@@ -249,11 +250,11 @@ endef
 # Debug targets only for latest stable and LTS stable
 #
 ifeq ($(ARCH),x86_64)
-$(eval $(call kernel,5.10.85,5.10.x,$(EXTRA),$(DEBUG)))
+$(eval $(call kernel,5.10.212,5.10.x,$(EXTRA),$(DEBUG)))
 #$(eval $(call kernel,5.4.28,5.4.x,-rt,))
 
 else ifeq ($(ARCH),aarch64)
-$(eval $(call kernel,5.10.85,5.10.x,$(EXTRA),$(DEBUG)))
+$(eval $(call kernel,5.10.212,5.10.x,$(EXTRA),$(DEBUG)))
 #$(eval $(call kernel,5.4.28,5.4.x,-rt,))
 
 endif

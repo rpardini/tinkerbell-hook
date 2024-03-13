@@ -1,4 +1,4 @@
-FROM linuxkit/alpine:e2391e0b164c57db9f6c4ae110ee84f766edc430 AS kernel-build
+FROM alpine:3 AS kernel-build
 RUN apk add \
     argp-standalone \
     automake \
@@ -7,8 +7,10 @@ RUN apk add \
     binutils-dev \
     bison \
     build-base \
+    coreutils \
     curl \
     diffutils \
+    findutils \
     flex \
     git \
     gmp-dev \
@@ -30,6 +32,7 @@ RUN apk add \
     xz-dev \
     zlib-dev
 
+
 # libunwind-dev pkg is missing for s390x for now. Only install on other arch
 RUN [ $(uname -m) != s390x ] && apk add libunwind-dev || true
 
@@ -38,14 +41,7 @@ ARG KERNEL_SERIES
 ARG EXTRA
 ARG DEBUG
 
-ENV WIREGUARD_VERSION=1.0.20200506
-ENV WIREGUARD_SHA256="98a99f2b825a82d57a7213e666f1ee4f7cc02bddb09bf4908b4b09447a8f121e"
-ENV WIREGUARD_URL=https://git.zx2c4.com/wireguard-linux-compat/snapshot/wireguard-linux-compat-${WIREGUARD_VERSION}.tar.xz
-
-# We copy the entire directory. This copies some unneeded files, but
-# allows us to check for the existence /patches-${KERNEL_SERIES} to
-# build kernels without patches.
-COPY / /
+COPY /keys.asc /keys.asc
 
 # Download and verify kernel
 # PGP keys: 589DA6B1 (greg@kroah.com) & 6092693E (autosigner@kernel.org) & 00411886 (torvalds@linux-foundation.org)
@@ -65,29 +61,19 @@ RUN KERNEL_MAJOR=$(echo ${KERNEL_VERSION} | cut -d . -f 1) && \
     gpg2 --verify linux-${KERNEL_VERSION}.tar.sign linux-${KERNEL_VERSION}.tar && \
     cat linux-${KERNEL_VERSION}.tar | tar --absolute-names -x && mv /linux-${KERNEL_VERSION} /linux
 
+# We copy the entire directory. This copies some unneeded files, but
+# allows us to check for the existence /patches-${KERNEL_SERIES} to
+# build kernels without patches.
+# NOTE(rpardini): .dockerignore is used to avoid throwing away the baby with the bathwater
+COPY / /
+
 
 RUN mkdir -p /out/src
-
-WORKDIR /tmp
-# Download Intel ucode, create a CPIO archive for it, and keep it in the build context
-# so the firmware can also be referenced with CONFIG_EXTRA_FIRMWARE
-ENV UCODE_REPO=https://github.com/intel/Intel-Linux-Processor-Microcode-Data-Files
-ENV UCODE_COMMIT=microcode-20191115
-RUN set -e && \
-    if [ $(uname -m) == x86_64 ]; then \
-        git clone ${UCODE_REPO} ucode && \
-        cd ucode && \
-        git checkout ${UCODE_COMMIT} && \
-        iucode_tool --normal-earlyfw --write-earlyfw=/out/intel-ucode.cpio ./intel-ucode && \
-        cp license /out/intel-ucode-license.txt && \
-        mkdir -p /lib/firmware && \
-        cp -rav ./intel-ucode /lib/firmware; \
-    fi
 
 
 WORKDIR /linux
 # Apply local specific patches if present
-RUN set -e && \
+RUN set -e && set -x && \
     if [ -n "${EXTRA}" ] && [ -d /patches-${KERNEL_SERIES}${EXTRA} ]; then \
 	echo "Patching ${EXTRA} kernel"; \
 	for patch in /patches-${KERNEL_SERIES}${EXTRA}/*.patch; do \
@@ -97,7 +83,7 @@ RUN set -e && \
     fi
 
 # Apply local common patches if present
-RUN set -e && \
+RUN set -e && set -x && \
     if [ -d /patches-${KERNEL_SERIES} ]; then \
         for patch in /patches-${KERNEL_SERIES}/*.patch; do \
             echo "Applying $patch"; \
@@ -108,11 +94,11 @@ RUN set -e && \
 
 
 # Save kernel source
-RUN tar cJf /out/src/linux.tar.xz /linux
+#RUN tar cJf /out/src/linux.tar.xz /linux ## rpardini: no, why? this takes too long
 
 # Kernel config
 # The s390x defconfig moved with 5.2.x
-RUN case $(uname -m) in \
+RUN set -x && case $(uname -m) in \
     x86_64) \
         KERNEL_DEF_CONF=/linux/arch/x86/configs/x86_64_defconfig; \
         ;; \
@@ -138,11 +124,11 @@ RUN case $(uname -m) in \
     fi && \
     make defconfig && \
     make oldconfig && \
-    if [ -z "${EXTRA}" ] && [ -z "${DEBUG}" ]; then diff -u .config ${KERNEL_DEF_CONF}; fi
+    if [ -z "${EXTRA}" ] && [ -z "${DEBUG}" ]; then diff -u .config ${KERNEL_DEF_CONF} || true; fi
 
 
 # Kernel
-RUN case $(uname -m) in \
+RUN set -x && case $(uname -m) in \
     s390x) \
         KCFLAGS="-fno-pie -fPIC"; \
         ;; \
@@ -150,7 +136,7 @@ RUN case $(uname -m) in \
         KCFLAGS="-fno-pie"; \
         ;; \
     esac && \
-    make -j "$(getconf _NPROCESSORS_ONLN)" KCFLAGS="$KCFLAGS" && \
+    make -j16 KCFLAGS="$KCFLAGS" && \
     case $(uname -m) in \
     x86_64) \
         cp arch/x86_64/boot/bzImage /out/kernel; \
@@ -165,18 +151,9 @@ RUN case $(uname -m) in \
     cp System.map /out && \
     ([ -n "${DEBUG}" ] && cp vmlinux /out || true)
 
-# WireGuard (skip kernels which have it in tree)
-RUN if [  ! -d /linux/drivers/net/wireguard ]; then \
-        curl -fsSL -o /wireguard.tar.xz "${WIREGUARD_URL}" && \
-        echo "${WIREGUARD_SHA256}  /wireguard.tar.xz" | sha256sum -c - && \
-        cp /wireguard.tar.xz /out/src/ && \
-        tar -C / --one-top-level=wireguard --strip-components=2 -xJf /wireguard.tar.xz "wireguard-linux-compat-${WIREGUARD_VERSION}/src" && \
-        make -j "$(getconf _NPROCESSORS_ONLN)" M="/wireguard" modules; \
-     fi
 
 # Modules and Device Tree binaries
 RUN make INSTALL_MOD_PATH=/tmp/kernel-modules modules_install && \
-    make INSTALL_MOD_PATH=/tmp/kernel-modules M="/wireguard" modules_install && \
     ( DVER=$(basename $(find /tmp/kernel-modules/lib/modules/ -mindepth 1 -maxdepth 1)) && \
       cd /tmp/kernel-modules/lib/modules/$DVER && \
       rm build source && \
