@@ -9,3 +9,4 @@ hook-*
 hook*.*.yaml
 out/
 *.swp
+.idea
