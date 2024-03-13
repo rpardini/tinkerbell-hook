@@ -113,7 +113,7 @@ devbuild_$(2)$(3)$(4): Dockerfile Makefile $(wildcard patches-$(2)/*) $(wildcard
 
 
 build_$(2)$(3)$(4): Dockerfile Makefile $(wildcard patches-$(2)/*) $(wildcard config-$(2)*) config-dbg
-	@if [ x"$(DIRTY)" !=  x ]; then echo "Your repository is not clean. Will not push image"; exit 1; fi
+	@if [ x"$(DIRTY)" !=  x ]; then echo "Your repository is not clean. Will not push image"; fi
 	docker pull $(ORG)/$(IMAGE):$(1)$(3)$(4)-$(TAG) || \
 		docker buildx build \
 			--platform $(KERNEL_PLATFORMS) \
@@ -123,7 +123,7 @@ build_$(2)$(3)$(4): Dockerfile Makefile $(wildcard patches-$(2)/*) $(wildcard co
 			--build-arg EXTRA=$(3) \
 			--build-arg DEBUG=$(4) \
 			$(LABELS) \
-			--no-cache -t $(ORG)/$(IMAGE):$(1)$(3)$(4)-$(TAG) .
+			--progress=plain -t $(ORG)/$(IMAGE):$(1)$(3)$(4)-$(TAG) .
 
 forcebuild_$(2)$(3)$(4): Dockerfile Makefile $(wildcard patches-$(2)/*) $(wildcard config-$(2)*) config-dbg
 	docker buildx build \

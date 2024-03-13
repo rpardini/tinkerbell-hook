@@ -187,7 +187,8 @@ RUN DVER=$(basename $(find /tmp/kernel-modules/lib/modules/ -mindepth 1 -maxdept
 
 RUN printf "KERNEL_SOURCE=${KERNEL_SOURCE}\n" > /out/kernel-source-info
 
-
+RUN ls -lahtR /out/ 
+ 
 FROM scratch
 ENTRYPOINT []
 CMD []

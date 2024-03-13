@@ -1,6 +1,6 @@
 kernel:
-  image: quay.io/tinkerbell/hook-kernel:5.10.85-d1225df88208e5a732e820a182b75fb35c737bdd
-  cmdline: "console=tty0 console=ttyS0 console=ttyAMA0 console=ttysclp0"
+  image: quay.io/tinkerbellrpardini/hook-kernel:5.10.212-abc7ed01072b6a236686c5c0b9f7db70954642d3-dirty
+  cmdline: "console=tty0 console=ttyS0 console=ttyAMA0 console=ttysclp0" # @TODO rpardini: this doesnt seem to be used at all?
 
 init:
   - linuxkit/init:144c9cee8aed9e30a16940f2bf1d3813883aceda
