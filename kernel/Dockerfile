@@ -30,16 +30,12 @@ RUN apk add \
     tar \
     xz \
     xz-dev \
-    zlib-dev
+    zlib-dev \
+    libunwind-dev
 
-
-# libunwind-dev pkg is missing for s390x for now. Only install on other arch
-RUN [ $(uname -m) != s390x ] && apk add libunwind-dev || true
 
 ARG KERNEL_VERSION
 ARG KERNEL_SERIES
-ARG EXTRA
-ARG DEBUG
 
 COPY /keys.asc /keys.asc
 
@@ -61,71 +57,20 @@ RUN KERNEL_MAJOR=$(echo ${KERNEL_VERSION} | cut -d . -f 1) && \
     gpg2 --verify linux-${KERNEL_VERSION}.tar.sign linux-${KERNEL_VERSION}.tar && \
     cat linux-${KERNEL_VERSION}.tar | tar --absolute-names -x && mv /linux-${KERNEL_VERSION} /linux
 
-# We copy the entire directory. This copies some unneeded files, but
-# allows us to check for the existence /patches-${KERNEL_SERIES} to
-# build kernels without patches.
-# NOTE(rpardini): .dockerignore is used to avoid throwing away the baby with the bathwater
-COPY / /
-
+# Copy all the possible defconfigs NOTE(rpardini): not ideal, changes to one arch cause cache misses for the others
+COPY /defconfig-* /
 
 RUN mkdir -p /out/src
 
+# Kernel config; copy the correct defconfig as .config, and run olddefconfig
+RUN set -x && \
+    cp /config-${KERNEL_SERIES}-$(uname -m) .config; \
+    make olddefconfig
 
-WORKDIR /linux
-# Apply local specific patches if present
-RUN set -e && set -x && \
-    if [ -n "${EXTRA}" ] && [ -d /patches-${KERNEL_SERIES}${EXTRA} ]; then \
-	echo "Patching ${EXTRA} kernel"; \
-	for patch in /patches-${KERNEL_SERIES}${EXTRA}/*.patch; do \
-            echo "Applying $patch"; \
-            patch -t -F0 -N -u -p1 < "$patch"; \
-	done; \
-    fi
-
-# Apply local common patches if present
-RUN set -e && set -x && \
-    if [ -d /patches-${KERNEL_SERIES} ]; then \
-        for patch in /patches-${KERNEL_SERIES}/*.patch; do \
-            echo "Applying $patch"; \
-            patch -t -F0 -N -u -p1 < "$patch"; \
-        done; \
-    fi
-
-
-
-# Save kernel source
-#RUN tar cJf /out/src/linux.tar.xz /linux ## rpardini: no, why? this takes too long
-
-# Kernel config
-# The s390x defconfig moved with 5.2.x
-RUN set -x && case $(uname -m) in \
-    x86_64) \
-        KERNEL_DEF_CONF=/linux/arch/x86/configs/x86_64_defconfig; \
-        ;; \
-    aarch64) \
-        KERNEL_DEF_CONF=/linux/arch/arm64/configs/defconfig; \
-        ;; \
-    s390x) \
-        if [ -f /linux/arch/s390/defconfig ]; then \
-            KERNEL_DEF_CONF=/linux/arch/s390/defconfig; \
-        else \
-            KERNEL_DEF_CONF=/linux/arch/s390/configs/defconfig; \
-        fi; \
-        ;; \
-    esac  && \
-    cp /config-${KERNEL_SERIES}-$(uname -m) ${KERNEL_DEF_CONF}; \
-    if [ -n "${EXTRA}" ] && [ -f "/config-${KERNEL_SERIES}-$(uname -m)${EXTRA}" ]; then \
-        cat /config-${KERNEL_SERIES}-$(uname -m)${EXTRA} >> ${KERNEL_DEF_CONF}; \
-    fi; \
-    sed -i "s/CONFIG_LOCALVERSION=\"-linuxkit\"/CONFIG_LOCALVERSION=\"-linuxkit${EXTRA}${DEBUG}\"/" ${KERNEL_DEF_CONF}; \
-    if [ -n "${DEBUG}" ]; then \
-        sed -i 's/CONFIG_PANIC_ON_OOPS=y/# CONFIG_PANIC_ON_OOPS is not set/' ${KERNEL_DEF_CONF}; \
-        cat /config${DEBUG} >> ${KERNEL_DEF_CONF}; \
-    fi && \
-    make defconfig && \
-    make oldconfig && \
-    if [ -z "${EXTRA}" ] && [ -z "${DEBUG}" ]; then diff -u .config ${KERNEL_DEF_CONF} || true; fi
-
+# Use this stage to run kernel configuration tasks like menuconfig / savedefconfig etc with:
+#   docker buildx build --load --progress=plain --build-arg KERNEL_VERSION=5.10.212 --build-arg KERNEL_SERIES=5.10.y -t hook-kernel:builder --target kernel-configurator .
+#   docker run -it -v "$(pwd)":/out-config hook-kernel:builder
+# Otherwise, since this stage is not referenced anywhere during normal build, it is completely skipped
 FROM kernel-config as kernel-configurator
 WORKDIR /linux
 VOLUME /out-config
@@ -135,15 +80,8 @@ ENTRYPOINT ["/bin/sh"]
 FROM kernel-config AS kernel-build
 
 # Kernel
-RUN set -x && case $(uname -m) in \
-    s390x) \
-        KCFLAGS="-fno-pie -fPIC"; \
-        ;; \
-    *) \
-        KCFLAGS="-fno-pie"; \
-        ;; \
-    esac && \
-    make -j16 KCFLAGS="$KCFLAGS" && \
+RUN set -x && \
+    make -j "$(getconf _NPROCESSORS_ONLN)" KCFLAGS="-fno-pie" && \
     case $(uname -m) in \
     x86_64) \
         cp arch/x86_64/boot/bzImage /out/kernel; \
@@ -151,16 +89,13 @@ RUN set -x && case $(uname -m) in \
     aarch64) \
         cp arch/arm64/boot/Image /out/kernel; \
         ;; \
-    s390x) \
-        cp arch/s390/boot/bzImage /out/kernel; \
-        ;; \
     esac && \
-    cp System.map /out && \
-    ([ -n "${DEBUG}" ] && cp vmlinux /out || true)
+    cp System.map /out
 
 
 # Modules and Device Tree binaries
-RUN make INSTALL_MOD_PATH=/tmp/kernel-modules modules_install && \
+RUN set -x && \
+    make INSTALL_MOD_PATH=/tmp/kernel-modules modules_install && \
     ( DVER=$(basename $(find /tmp/kernel-modules/lib/modules/ -mindepth 1 -maxdepth 1)) && \
       cd /tmp/kernel-modules/lib/modules/$DVER && \
       rm build source && \
@@ -172,28 +107,8 @@ RUN make INSTALL_MOD_PATH=/tmp/kernel-modules modules_install && \
     esac && \
     ( cd /tmp/kernel-modules && tar cf /out/kernel.tar . )
 
-# Headers (userspace API)
-RUN mkdir -p /tmp/kernel-headers/usr && \
-    make INSTALL_HDR_PATH=/tmp/kernel-headers/usr headers_install && \
-    ( cd /tmp/kernel-headers && tar cf /out/kernel-headers.tar usr )
 
-# Headers (kernel development)
-RUN DVER=$(basename $(find /tmp/kernel-modules/lib/modules/ -mindepth 1 -maxdepth 1)) && \
-    dir=/tmp/usr/src/linux-headers-$DVER && \
-    mkdir -p $dir && \
-    cp /linux/.config $dir && \
-    cp /linux/Module.symvers $dir && \
-    find . -path './include/*' -prune -o \
-           -path './arch/*/include' -prune -o \
-           -path './scripts/*' -prune -o \
-           -type f \( -name 'Makefile*' -o -name 'Kconfig*' -o -name 'Kbuild*' -o \
-                      -name '*.lds' -o -name '*.pl' -o -name '*.sh' -o \
-                      -name 'objtool' -o -name 'fixdep' -o -name 'randomize_layout_seed.h' \) | \
-         tar cf - -T - | (cd $dir; tar xf -) && \
-    ( cd /tmp && tar cf /out/kernel-dev.tar usr/src )
-
-RUN printf "KERNEL_SOURCE=${KERNEL_SOURCE}\n" > /out/kernel-source-info
-
+RUN ls -lahtR /tmp/kernel-modules
 RUN ls -lahtR /out/ 
  
 FROM scratch
