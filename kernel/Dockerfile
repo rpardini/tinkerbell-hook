@@ -1,3 +1,6 @@
+# To build
+#   docker buildx build --load --progress=plain --build-arg KERNEL_VERSION=5.10.213 --build-arg KERNEL_SERIES=5.10.y -t hook-kernel:arm64 .
+
 FROM alpine:3 AS kernel-config
 RUN apk add \
     argp-standalone \
