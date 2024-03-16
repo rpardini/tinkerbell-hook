@@ -62,6 +62,8 @@ COPY /defconfig-* /
 
 RUN mkdir -p /out/src
 
+WORKDIR /linux
+
 # Kernel config; copy the correct defconfig as .config, and run olddefconfig
 RUN set -x && \
     cp /defconfig-${KERNEL_SERIES}-$(uname -m) .config; \
@@ -72,7 +74,6 @@ RUN set -x && \
 #   docker run -it -v "$(pwd)":/out-config hook-kernel:builder
 # Otherwise, since this stage is not referenced anywhere during normal build, it is completely skipped
 FROM kernel-config as kernel-configurator
-WORKDIR /linux
 VOLUME /out-config
 ENTRYPOINT ["/bin/sh"]
 
