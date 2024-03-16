@@ -64,7 +64,7 @@ RUN mkdir -p /out/src
 
 # Kernel config; copy the correct defconfig as .config, and run olddefconfig
 RUN set -x && \
-    cp /config-${KERNEL_SERIES}-$(uname -m) .config; \
+    cp /defconfig-${KERNEL_SERIES}-$(uname -m) .config; \
     make olddefconfig
 
 # Use this stage to run kernel configuration tasks like menuconfig / savedefconfig etc with:
