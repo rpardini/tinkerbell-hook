@@ -71,7 +71,7 @@ out/$T/hook-mdev-$(arch): $$(hook-mdev-deps)
 out/$T/hook-bootkit-$(arch) out/$T/hook-docker-$(arch) out/$T/hook-mdev-$(arch): platform=linux/$$(lastword $$(subst -, ,$$(notdir $$@)))
 out/$T/hook-bootkit-$(arch) out/$T/hook-docker-$(arch) out/$T/hook-mdev-$(arch): container=hook-$$(word 2,$$(subst -, ,$$(notdir $$@)))
 out/$T/hook-bootkit-$(arch) out/$T/hook-docker-$(arch) out/$T/hook-mdev-$(arch):
-	docker buildx build --platform $$(platform) --load -t $(ORG)/$$(container):$T-$(arch) $$(container)
+	docker buildx build --progress=plain --platform $$(platform) --load -t $(ORG)/$$(container):$T-$(arch) $$(container)
 	touch $$@
 
 run-$(arch): out/$T/dbg/$(arch)/hook.tar
