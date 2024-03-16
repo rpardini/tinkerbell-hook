@@ -1,6 +1,6 @@
 kernel:
   #image: quay.io/tinkerbellrpardini/hook-kernel:5.10.212-abc7ed01072b6a236686c5c0b9f7db70954642d3-dirty  # amd64
-  image: quay.io/tinkerbellrpardini/hook-kernel:5.10.212-cbfd2ae33fddbf422833fda50d2fb9b711d3fd73 # arm64
+  image: docker.io/library/hook-kernel:arm64 # arm64
   cmdline: "console=tty0 console=ttyS0 console=ttyAMA0 console=ttysclp0" # @TODO rpardini: this doesnt seem to be used at all?
 
 init:
