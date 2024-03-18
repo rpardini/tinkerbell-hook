@@ -2,12 +2,12 @@
 #   docker buildx build --load --progress=plain --build-arg KERNEL_VERSION=5.10.213 --build-arg KERNEL_SERIES=5.10.y -t hook-kernel:arm64 .
 
 FROM debian:stable as kernel-source-unpacked
-
-ARG KERNEL_CROSS_COMPILE_PKGS
-
 ENV DEBIAN_FRONTEND=noninteractive
-RUN apt -y update
-RUN apt -y install curl xz-utils gnupg2 flex bison libssl-dev libelf-dev bc libncurses-dev ${KERNEL_CROSS_COMPILE_PKGS}
+
+# crossbuild-essentials are pretty heavy; here we install for both architecures to maximize Docker layer hit cache rate during development, but only one will be used
+ARG KERNEL_CROSS_COMPILE_PKGS
+#RUN apt -y update && apt -y install curl xz-utils gnupg2 flex bison libssl-dev libelf-dev bc libncurses-dev ${KERNEL_CROSS_COMPILE_PKGS} && apt -y clean
+RUN apt -y update && apt -y install curl xz-utils gnupg2 flex bison libssl-dev libelf-dev bc libncurses-dev crossbuild-essential-amd64 crossbuild-essential-arm64 && apt -y clean
 
 ARG KERNEL_MAJOR_V
 ARG KERNEL_VERSION
@@ -64,6 +64,8 @@ ENTRYPOINT ["/bin/bash"]
 FROM kernel-with-config AS kernel-build
 
 ARG KERNEL_OUTPUT_IMAGE
+
+# @TODO: This should be done in a single RUN to avoid a huge unneeded layer between make & installs
 
 # Kernel build. ENVs in previous stages are inherited; thus ARCH, CROSS_COMPILE, KCFLAGS, KBUILD_BUILD_USER, KBUILD_BUILD_HOST are available
 RUN set -x && \

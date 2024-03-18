@@ -47,7 +47,7 @@ function calculate_kernel_version_default() {
 function common_build_args_kernel_default() {
 	build_args+=(
 		"--build-arg" "KERNEL_OUTPUT_IMAGE=${KERNEL_OUTPUT_IMAGE}"
-		"--build-arg" "KERNEL_CROSS_COMPILE_PKGS=${KERNEL_CROSS_COMPILE_PKGS}"
+		"--build-arg" "KERNEL_CROSS_COMPILE_PKGS=${KERNEL_CROSS_COMPILE_PKGS}" # This is not used in the Dockerfile, to maximize cache hits
 		"--build-arg" "KERNEL_CROSS_COMPILE=${KERNEL_CROSS_COMPILE}"
 		"--build-arg" "KERNEL_ARCH=${KERNEL_ARCH}"
 		"--build-arg" "KERNEL_MAJOR=${KERNEL_MAJOR}"
