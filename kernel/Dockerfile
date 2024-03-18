@@ -3,18 +3,17 @@
 
 FROM debian:stable as kernel-source-unpacked
 
+ARG KERNEL_CROSS_COMPILE_PKGS
+
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt -y update
-RUN apt -y install curl xz-utils gnupg2
-RUN apt -y install crossbuild-essential-arm64 crossbuild-essential-amd64 
-RUN apt -y install flex bison libssl-dev libelf-dev bc libncurses-dev 
+RUN apt -y install curl xz-utils gnupg2 flex bison libssl-dev libelf-dev bc libncurses-dev ${KERNEL_CROSS_COMPILE_PKGS}
 
-ARG KERNEL_MAJOR
+ARG KERNEL_MAJOR_V
 ARG KERNEL_VERSION
-ARG KERNEL_SERIES
-ARG KERNEL_SOURCE=https://www.kernel.org/pub/linux/kernel/${KERNEL_MAJOR}/linux-${KERNEL_VERSION}.tar.xz
-ARG KERNEL_SHA256_SUMS=https://www.kernel.org/pub/linux/kernel/${KERNEL_MAJOR}/sha256sums.asc
-ARG KERNEL_PGP2_SIGN=https://www.kernel.org/pub/linux/kernel/${KERNEL_MAJOR}/linux-${KERNEL_VERSION}.tar.sign
+ARG KERNEL_SOURCE=https://www.kernel.org/pub/linux/kernel/${KERNEL_MAJOR_V}/linux-${KERNEL_VERSION}.tar.xz
+ARG KERNEL_SHA256_SUMS=https://www.kernel.org/pub/linux/kernel/${KERNEL_MAJOR_V}/sha256sums.asc
+ARG KERNEL_PGP2_SIGN=https://www.kernel.org/pub/linux/kernel/${KERNEL_MAJOR_V}/linux-${KERNEL_VERSION}.tar.sign
 
 # PGP keys: 589DA6B1 (greg@kroah.com) & 6092693E (autosigner@kernel.org) & 00411886 (torvalds@linux-foundation.org)
 COPY /keys.asc /keys.asc
@@ -34,50 +33,55 @@ RUN set -x &&  \
 
 
 FROM kernel-source-unpacked as kernel-with-config
+
 ARG INPUT_DEFCONFIG
+ARG KERNEL_ARCH
+ARG KERNEL_CROSS_COMPILE
+
+ENV KERNEL_ARCH=${KERNEL_ARCH}
+ENV ARCH=${KERNEL_ARCH}
+ENV CROSS_COMPILE=${KERNEL_CROSS_COMPILE}
+ENV KCFLAGS="-fdiagnostics-color=always -fno-pie"
+ENV KBUILD_BUILD_USER="hook"
+ENV KBUILD_BUILD_HOST="tinkerbell"
 
 # Copy just the defconfig needed for this build
 WORKDIR /linux
 COPY /configs/${INPUT_DEFCONFIG} /linux/.config
 
 # Kernel config; copy the correct defconfig as .config, and run olddefconfig
-RUN set -x && make olddefconfig
+RUN set -x && make "ARCH=${KERNEL_ARCH}" olddefconfig
 
 # Use this stage to run kernel configuration tasks like menuconfig / savedefconfig etc with:
 #   docker buildx build --load --progress=plain --build-arg KERNEL_VERSION=5.10.212 --build-arg KERNEL_SERIES=5.10.y -t hook-kernel:builder --target kernel-configurator .
 #   docker run -it -v "$(pwd)":/out-config hook-kernel:builder
 # Otherwise, since this stage is not referenced anywhere during normal build, it is completely skipped
 FROM kernel-with-config as kernel-configurator
-VOLUME /out-config
+VOLUME /host
 ENTRYPOINT ["/bin/bash"]
 
 
 FROM kernel-with-config AS kernel-build
 
-# Kernel
+ARG KERNEL_OUTPUT_IMAGE
+
+# Kernel build. ENVs in previous stages are inherited; thus ARCH, CROSS_COMPILE, KCFLAGS, KBUILD_BUILD_USER, KBUILD_BUILD_HOST are available
 RUN set -x && \
-    make -j "$(getconf _NPROCESSORS_ONLN)" KCFLAGS="-fno-pie" && \
-    case $(uname -m) in \
-    x86_64) \
-        cp arch/x86_64/boot/bzImage /out/kernel; \
-        ;; \
-    aarch64) \
-        cp arch/arm64/boot/Image /out/kernel; \
-        ;; \
-    esac && \
+    echo "Cross compiler: ${CROSS_COMPILE}" && \
+    make -j"$(getconf _NPROCESSORS_ONLN)" && \
+    cp ${KERNEL_OUTPUT_IMAGE} /out/kernel && \
     cp System.map /out
 
 
 # Modules and Device Tree binaries
 RUN set -x && \
-    make INSTALL_MOD_PATH=/tmp/kernel-modules modules_install && \
+    make -j"$(getconf _NPROCESSORS_ONLN)" INSTALL_MOD_PATH=/tmp/kernel-modules modules_install && \
     ( DVER=$(basename $(find /tmp/kernel-modules/lib/modules/ -mindepth 1 -maxdepth 1)) && \
       cd /tmp/kernel-modules/lib/modules/$DVER && \
-      rm build source && \
-      ln -s /usr/src/linux-headers-$DVER build ) && \
-    case $(uname -m) in \
-    aarch64) \
-        make INSTALL_DTBS_PATH=/tmp/kernel-modules/boot/dtb dtbs_install; \
+      rm build source  && \
+    case "$KERNEL_ARCH" in \
+    arm64) \
+        make -j"$(getconf _NPROCESSORS_ONLN)" INSTALL_DTBS_PATH=/tmp/kernel-modules/boot/dtb dtbs_install; \
         ;; \
     esac && \
     ( cd /tmp/kernel-modules && tar cf /out/kernel.tar . )

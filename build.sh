@@ -69,6 +69,12 @@ case "${1:-"build"}" in
 		get_kernel_info_dict "${kernel_id}"
 		set_kernel_vars_from_info_dict
 
+		echo "Kernel calculate version method: ${kernel_info[VERSION_FUNC]}" >&2
+		"${kernel_info[VERSION_FUNC]}"
+
+		echo "Kernel config method: ${kernel_info[CONFIG_FUNC]}" >&2
+		"${kernel_info[CONFIG_FUNC]}"
+
 		#docker buildx build --progress=plain -t k8s-avengers/el-kernel-lts:builder --target kernelconfigured "${build_args[@]}" .
 		#docker run -it --rm -v "$(pwd):/host" k8s-avengers/el-kernel-lts:builder bash -c "echo 'Config ${INPUT_DEFCONFIG}' && make menuconfig && make savedefconfig && cp defconfig /host/${INPUT_DEFCONFIG} && echo 'Saved ${INPUT_DEFCONFIG}'"
 		;;

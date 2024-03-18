@@ -22,7 +22,7 @@ function get_kernel_info_dict() {
 	declare kernel="${1}"
 	declare kernel_data_str="${kernel_data[${kernel}]}"
 	if [[ -z "${kernel_data_str}" ]]; then
-		echo "ERROR: No kernel data found for '${kernel}'" >&2
+		echo "ERROR: No kernel data found for '${kernel}'; valid ones are: ${kernels[*]} " >&2
 		exit 1
 	fi
 	echo "Kernel data for '${kernel}': ${kernel_data_str}" >&2
@@ -30,6 +30,7 @@ function get_kernel_info_dict() {
 	# Post process
 	kernel_info['BUILD_FUNC']="build_kernel_${kernel_info['METHOD']}"
 	kernel_info['VERSION_FUNC']="calculate_kernel_version_${kernel_info['METHOD']}"
+	kernel_info['CONFIG_FUNC']="configure_kernel_${kernel_info['METHOD']}"
 }
 
 function set_kernel_vars_from_info_dict() {
