@@ -1,6 +1,6 @@
 # Attention, this is a template that is run through envsubst, but with a specific list of variables to replace. Thus:
 # - HOOK_KERNEL_IMAGE: ${HOOK_KERNEL_IMAGE}
-# - HOOK_KERNEL_DESCRIPTION: ${HOOK_KERNEL_DESCRIPTION}
+# - HOOK_KERNEL_ID: ${HOOK_KERNEL_ID}
 # - Other variables are not replaced: for example this is a literal dollar sign-SOMETHING: $SOMETHING
 
 kernel:
@@ -118,7 +118,7 @@ files:
       name_version=$(grep PRETTY_NAME= /etc/os-release | cut -d'=' -f2 | tr -d '"')
       export PS1='${name_version}:\w\$ '
       # Disable kernel messages on console
-      echo 4 > /proc/sys/kernel/printk
+      # rpardini: why? # echo 4 > /proc/sys/kernel/printk
     mode: "0644"
 
   - path: etc/motd
@@ -133,7 +133,7 @@ files:
       ██   ██ ██    ██ ██    ██ ██  ██  ██    ██      ██
       ██   ██  ██████   ██████  ██   ██  ██████  ███████
 
-      - This Hook is currently using the ${HOOK_KERNEL_DESCRIPTION}
+      - This Hook is using kernel ${HOOK_KERNEL_ID}
       - Use `docker` commands to access the tink worker/agent container and workflow action containers.
       - Logs are located in the `/var/log/` directory.
 
