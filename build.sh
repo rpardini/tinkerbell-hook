@@ -2,6 +2,7 @@
 
 set -e
 
+source bash/linuxkit.sh
 source kernel/bash/common.sh
 source kernel/bash/kernel_default.sh
 source kernel/bash/kernel_armbian.sh
@@ -103,8 +104,13 @@ case "${1:-"build"}" in
 
 		echo "Kernel calculate version method: ${kernel_info[VERSION_FUNC]}" >&2
 		"${kernel_info[VERSION_FUNC]}"
-		
-		
+
+		# Ensure OUTPUT_ID is set
+		if [[ "${OUTPUT_ID}" == "" ]]; then
+			echo "ERROR: \${OUTPUT_ID} is not set after ${kernel_info[VERSION_FUNC]}" >&2
+			exit 1
+		fi
+
 		# If the image is in the local docker cache, skip building
 		if [[ -n "$(docker images -q "${kernel_oci_image}")" ]]; then
 			echo "Kernel image ${kernel_oci_image} already in local cache; skipping pull" >&2
@@ -115,15 +121,51 @@ case "${1:-"build"}" in
 			# @TODO: if pull fails, build like build-kernel would.
 		fi
 
-
 		# Template the linuxkit configuration file.
 		# - You'd think linuxkit would take --build-args or something by now, but no.
 		# - Linuxkit does have @pkg but that's only useful in its own repo (with pkgs/ dir)
 		# - envsubst doesn't offer a good way to escape $ in the input, so we pass the exact list of vars to consider, so escaping is not needed
 
-		cat hook.template.yaml |
+		# shellcheck disable=SC2016 # I'm using single quotes to avoid shell expansion, envsubst wants the dollar signs.
+		# shellcheck disable=SC2002 # Again, no, I love my cat, leave me alone
+		cat "hook.template.yaml" |
 			HOOK_KERNEL_IMAGE="${kernel_oci_image}" HOOK_KERNEL_ID="${kernel_id}" \
 				envsubst '$HOOK_KERNEL_IMAGE $HOOK_KERNEL_ID' > "hook.${kernel_id}.yaml"
+
+		declare -g linuxkit_bin=""
+		obtain_linuxkit_binary_cached # sets "${linuxkit_bin}"
+
+		declare lk_output_dir="out/linuxkit-${kernel_id}"
+		mkdir -p "${lk_output_dir}"
+
+		declare -a lk_args=(
+			"--docker"
+			"--arch" "${kernel_info['DOCKER_ARCH']}"
+			"--format" "kernel+initrd"
+			"--name" "hook"
+			"--dir" "${lk_output_dir}"
+			"hook.${kernel_id}.yaml" # the linuxkit configuration file
+		)
+
+		echo "Building Hook with kernel ${kernel_id} using linuxkit: ${lk_args[*]}" >&2
+		"${linuxkit_bin}" build "${lk_args[@]}"
+
+		# rename outputs
+		mv -v "${lk_output_dir}/hook-kernel" "${lk_output_dir}/vmlinuz-${OUTPUT_ID}"
+		mv -v "${lk_output_dir}/hook-initrd.img" "${lk_output_dir}/initramfs-${OUTPUT_ID}"
+		rm "${lk_output_dir}/hook-cmdline"
+
+		# tar the files into out/hook.tar in such a way that vmlinuz and initramfs are at the root of the tar; pigz it
+		# Those are the artifacts published to the GitHub release
+		tar -cvf- -C "${lk_output_dir}" "initramfs-${OUTPUT_ID}" "vmlinuz-${OUTPUT_ID}" | pigz > "out/hook-${OUTPUT_ID}.tar.gz"
+
+		# also prepare out/hook dir with the kernel/initramfs pairs; this makes it easy to deploy to /opt/hook eg for stack chart (or nibs)
+		mkdir -p "out/hook"
+		mv -v "${lk_output_dir}/vmlinuz-${OUTPUT_ID}" "out/hook/vmlinuz-${OUTPUT_ID}"
+		mv -v "${lk_output_dir}/initramfs-${OUTPUT_ID}" "out/hook/initramfs-${OUTPUT_ID}"
+
+		rmdir "${lk_output_dir}"
+
 		;;
 
 esac

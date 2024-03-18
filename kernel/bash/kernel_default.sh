@@ -12,6 +12,12 @@ function calculate_kernel_version_default() {
 		echo "ERROR: kernel/configs/${INPUT_DEFCONFIG} does not exist, check inputs/envs" >&2
 		exit 1
 	fi
+	
+	# The default kernel output id is just the arch, unless KCONFIG is not generic
+	declare -g OUTPUT_ID="${ARCH}"
+	if [[ "${KCONFIG}" != "generic" ]]; then
+		OUTPUT_ID="${KCONFIG}-${KERNEL_MAJOR}.${KERNEL_MINOR}.y-${ARCH}"
+	fi
 
 	# Calculate the KERNEL_ARCH from ARCH; also what is the cross-compiler package needed for the arch
 	declare -g KERNEL_ARCH="" KERNEL_CROSS_COMPILE_PKGS="" KERNEL_OUTPUT_IMAGE=""

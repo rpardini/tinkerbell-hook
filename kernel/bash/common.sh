@@ -18,7 +18,7 @@ function resolve_latest_kernel_version_lts() { # Produces KERNEL_POINT_RELEASE
 	KERNEL_POINT_RELEASE="${KERNEL_POINT_RELEASE:-"${POINT_RELEASE}"}"
 }
 
-function get_kernel_info_dict() { 
+function get_kernel_info_dict() {
 	declare kernel="${1}"
 	declare kernel_data_str="${kernel_data[${kernel}]}"
 	if [[ -z "${kernel_data_str}" ]]; then
@@ -31,6 +31,13 @@ function get_kernel_info_dict() {
 	kernel_info['BUILD_FUNC']="build_kernel_${kernel_info['METHOD']}"
 	kernel_info['VERSION_FUNC']="calculate_kernel_version_${kernel_info['METHOD']}"
 	kernel_info['CONFIG_FUNC']="configure_kernel_${kernel_info['METHOD']}"
+
+	# convert ARCH (x86_64, aarch64) to docker-ARCH (amd64, arm64)
+	case "${kernel_info['ARCH']}" in
+		"x86_64") kernel_info['DOCKER_ARCH']="amd64" ;;
+		"aarch64") kernel_info['DOCKER_ARCH']="arm64" ;;
+		*) echo "ERROR: ARCH ${kernel_info['ARCH']} not supported" >&2 && exit 1 ;;
+	esac
 }
 
 function set_kernel_vars_from_info_dict() {
