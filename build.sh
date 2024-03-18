@@ -103,17 +103,27 @@ case "${1:-"build"}" in
 
 		echo "Kernel calculate version method: ${kernel_info[VERSION_FUNC]}" >&2
 		"${kernel_info[VERSION_FUNC]}"
+		
+		
+		# If the image is in the local docker cache, skip building
+		if [[ -n "$(docker images -q "${kernel_oci_image}")" ]]; then
+			echo "Kernel image ${kernel_oci_image} already in local cache; skipping pull" >&2
+		else
+			# Pull the kernel from the OCI registry
+			echo "Pulling kernel from ${kernel_oci_image}" >&2
+			docker pull "${kernel_oci_image}" || true
+			# @TODO: if pull fails, build like build-kernel would.
+		fi
 
-		# Pull the kernel from the OCI registry
-		echo "Pulling kernel from ${kernel_oci_image}" >&2
-		docker pull "${kernel_oci_image}" || true
 
 		# Template the linuxkit configuration file.
 		# - You'd think linuxkit would take --build-args or something by now, but no.
 		# - Linuxkit does have @pkg but that's only useful in its own repo (with pkgs/ dir)
 		# - envsubst doesn't offer a good way to escape $ in the input, so we pass the exact list of vars to consider, so escaping is not needed
 
-		HOOK_KERNEL_IMAGE="${kernel_oci_image}" HOOK_KERNEL_ID="${kernel_id}" cat hook.template.yaml | envsubst 'HOOK_KERNEL_IMAGE HOOK_KERNEL_ID' > hook.yaml
+		cat hook.template.yaml |
+			HOOK_KERNEL_IMAGE="${kernel_oci_image}" HOOK_KERNEL_ID="${kernel_id}" \
+				envsubst '$HOOK_KERNEL_IMAGE $HOOK_KERNEL_ID' > "hook.${kernel_id}.yaml"
 		;;
 
 esac

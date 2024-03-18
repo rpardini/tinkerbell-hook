@@ -1,7 +1,7 @@
 # Attention, this is a template that is run through envsubst, but with a specific list of variables to replace. Thus:
 # - HOOK_KERNEL_IMAGE: ${HOOK_KERNEL_IMAGE}
 # - HOOK_KERNEL_ID: ${HOOK_KERNEL_ID}
-# - Other variables are not replaced: for example this is a literal dollar sign-SOMETHING: $SOMETHING
+# - Other variables are not replaced: for example this is a literal dollarsign-SOMETHING: $SOMETHING and with braces: ${SOMETHING}
 
 kernel:
   image: "${HOOK_KERNEL_IMAGE}"
