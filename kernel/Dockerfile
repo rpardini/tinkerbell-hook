@@ -1,54 +1,26 @@
 # To build
 #   docker buildx build --load --progress=plain --build-arg KERNEL_VERSION=5.10.213 --build-arg KERNEL_SERIES=5.10.y -t hook-kernel:arm64 .
 
-FROM alpine:3 AS kernel-config
-RUN apk add \
-    argp-standalone \
-    automake \
-    bash \
-    bc \
-    binutils-dev \
-    bison \
-    build-base \
-    coreutils \
-    curl \
-    diffutils \
-    findutils \
-    flex \
-    git \
-    gmp-dev \
-    gnupg \
-    installkernel \
-    kmod \
-    elfutils-dev \
-    linux-headers \
-    mpc1-dev \
-    mpfr-dev \
-    ncurses-dev \
-    openssl-dev \
-    patch \
-    rsync \
-    sed \
-    squashfs-tools \
-    tar \
-    xz \
-    xz-dev \
-    zlib-dev \
-    libunwind-dev
+FROM debian:stable as kernel-source-unpacked
 
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt -y update
+RUN apt -y install curl xz-utils gnupg2
+RUN apt -y install crossbuild-essential-arm64 crossbuild-essential-amd64 
+RUN apt -y install flex bison libssl-dev libelf-dev bc libncurses-dev 
 
+ARG KERNEL_MAJOR
 ARG KERNEL_VERSION
 ARG KERNEL_SERIES
+ARG KERNEL_SOURCE=https://www.kernel.org/pub/linux/kernel/${KERNEL_MAJOR}/linux-${KERNEL_VERSION}.tar.xz
+ARG KERNEL_SHA256_SUMS=https://www.kernel.org/pub/linux/kernel/${KERNEL_MAJOR}/sha256sums.asc
+ARG KERNEL_PGP2_SIGN=https://www.kernel.org/pub/linux/kernel/${KERNEL_MAJOR}/linux-${KERNEL_VERSION}.tar.sign
 
+# PGP keys: 589DA6B1 (greg@kroah.com) & 6092693E (autosigner@kernel.org) & 00411886 (torvalds@linux-foundation.org)
 COPY /keys.asc /keys.asc
 
 # Download and verify kernel
-# PGP keys: 589DA6B1 (greg@kroah.com) & 6092693E (autosigner@kernel.org) & 00411886 (torvalds@linux-foundation.org)
-RUN KERNEL_MAJOR=$(echo ${KERNEL_VERSION} | cut -d . -f 1) && \
-    KERNEL_MAJOR=v${KERNEL_MAJOR}.x && \
-    KERNEL_SOURCE=https://www.kernel.org/pub/linux/kernel/${KERNEL_MAJOR}/linux-${KERNEL_VERSION}.tar.xz && \
-    KERNEL_SHA256_SUMS=https://www.kernel.org/pub/linux/kernel/${KERNEL_MAJOR}/sha256sums.asc && \
-    KERNEL_PGP2_SIGN=https://www.kernel.org/pub/linux/kernel/${KERNEL_MAJOR}/linux-${KERNEL_VERSION}.tar.sign && \
+RUN set -x &&  \
     curl -fsSLO ${KERNEL_SHA256_SUMS} && \
     gpg2 -q --import keys.asc && \
     gpg2 --verify sha256sums.asc && \
@@ -60,28 +32,27 @@ RUN KERNEL_MAJOR=$(echo ${KERNEL_VERSION} | cut -d . -f 1) && \
     gpg2 --verify linux-${KERNEL_VERSION}.tar.sign linux-${KERNEL_VERSION}.tar && \
     cat linux-${KERNEL_VERSION}.tar | tar --absolute-names -x && mv /linux-${KERNEL_VERSION} /linux
 
-# Copy all the possible defconfigs NOTE(rpardini): not ideal, changes to one arch cause cache misses for the others
-COPY /defconfig-* /
 
-RUN mkdir -p /out/src
+FROM kernel-source-unpacked as kernel-with-config
+ARG INPUT_DEFCONFIG
 
+# Copy just the defconfig needed for this build
 WORKDIR /linux
+COPY /configs/${INPUT_DEFCONFIG} /linux/.config
 
 # Kernel config; copy the correct defconfig as .config, and run olddefconfig
-RUN set -x && \
-    cp /defconfig-${KERNEL_SERIES}-$(uname -m) .config; \
-    make olddefconfig
+RUN set -x && make olddefconfig
 
 # Use this stage to run kernel configuration tasks like menuconfig / savedefconfig etc with:
 #   docker buildx build --load --progress=plain --build-arg KERNEL_VERSION=5.10.212 --build-arg KERNEL_SERIES=5.10.y -t hook-kernel:builder --target kernel-configurator .
 #   docker run -it -v "$(pwd)":/out-config hook-kernel:builder
 # Otherwise, since this stage is not referenced anywhere during normal build, it is completely skipped
-FROM kernel-config as kernel-configurator
+FROM kernel-with-config as kernel-configurator
 VOLUME /out-config
-ENTRYPOINT ["/bin/sh"]
+ENTRYPOINT ["/bin/bash"]
 
 
-FROM kernel-config AS kernel-build
+FROM kernel-with-config AS kernel-build
 
 # Kernel
 RUN set -x && \

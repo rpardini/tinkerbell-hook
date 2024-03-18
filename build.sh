@@ -132,6 +132,8 @@ function set_kernel_vars_from_info_dict() {
 
 # Grab linuxkit from official GitHub releases; account for arm64/amd64 differences
 
+declare -r -g kernel_id="${2:-"hook-default-amd64"}"
+
 case "${1:-"build"}" in
 	gha-matrix)
 		# This is a GitHub Actions matrix build, so we need to produce a JSON array of objects, one for each kernel. Doing this in bash is painful.
@@ -159,13 +161,21 @@ case "${1:-"build"}" in
 	kernel-config)
 		# bail if not interactive (stdin is a terminal)
 		[[ ! -t 0 ]] && echo "not interactive, can't configure" >&2 && exit 1
+		
 		echo "Would configure a kernel" >&2
+		
+		declare -A kernel_info
+		declare kernel_oci_version="" kernel_oci_image=""
+		get_kernel_info_dict "${kernel_id}"
+		set_kernel_vars_from_info_dict
+		
+		
+		
 		#docker buildx build --progress=plain -t k8s-avengers/el-kernel-lts:builder --target kernelconfigured "${build_args[@]}" .
 		#docker run -it --rm -v "$(pwd):/host" k8s-avengers/el-kernel-lts:builder bash -c "echo 'Config ${INPUT_DEFCONFIG}' && make menuconfig && make savedefconfig && cp defconfig /host/${INPUT_DEFCONFIG} && echo 'Saved ${INPUT_DEFCONFIG}'"
 		;;
 
 	kernel-build)
-		declare kernel_id="${2:-"hook-default-arm64"}"
 		declare -A kernel_info
 		declare kernel_oci_version="" kernel_oci_image=""
 		get_kernel_info_dict "${kernel_id}"
