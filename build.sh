@@ -150,6 +150,8 @@ case "${1:-"build"}" in
 		echo "Building Hook with kernel ${kernel_id} using linuxkit: ${lk_args[*]}" >&2
 		"${linuxkit_bin}" build "${lk_args[@]}"
 
+		# @TODO: allow a "run" stage here.
+
 		# rename outputs
 		mv -v "${lk_output_dir}/hook-kernel" "${lk_output_dir}/vmlinuz-${OUTPUT_ID}"
 		mv -v "${lk_output_dir}/hook-initrd.img" "${lk_output_dir}/initramfs-${OUTPUT_ID}"
