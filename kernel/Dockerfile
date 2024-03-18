@@ -66,6 +66,7 @@ FROM kernel-with-config AS kernel-build
 ARG KERNEL_OUTPUT_IMAGE
 
 # @TODO: This should be done in a single RUN to avoid a huge unneeded layer between make & installs
+RUN mkdir /out
 
 # Kernel build. ENVs in previous stages are inherited; thus ARCH, CROSS_COMPILE, KCFLAGS, KBUILD_BUILD_USER, KBUILD_BUILD_HOST are available
 RUN set -x && \
