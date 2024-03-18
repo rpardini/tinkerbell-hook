@@ -23,7 +23,6 @@ declare -A kernel_data=(
 )
 
 declare -g HOOK_OCI_BASE="quay.io/tinkerbellrpardini/kernel-"
-declare -g ARMBIAN_OCI_BASE="ghcr.io/armbian/os/"
 
 # Grab tooling needed: jq, from apt
 [[ ! -f /usr/bin/jq ]] && apt update && apt install -y jq

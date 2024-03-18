@@ -2,6 +2,8 @@
 
 set -e
 
+declare -g ARMBIAN_OCI_BASE="ghcr.io/armbian/os/"
+
 function build_kernel_armbian() {
 	# smth else
 	echo "Building armbian kernel" >&2
