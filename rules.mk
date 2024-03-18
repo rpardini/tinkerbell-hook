@@ -23,7 +23,7 @@ ARCH = arm64
 endif
 
 # rpardini: arm64 very soon again
-arches := arm64 
+arches := amd64 
 modes := rel dbg
 
 hook-bootkit-deps := $(wildcard hook-bootkit/*)
@@ -94,9 +94,10 @@ push-hook-bootkit push-hook-docker push-hook-mdev:
 	docker buildx build --platform $$platforms --push -t $(ORG)/$(container):$T $(container)
 
 .PHONY: dist
-dist: out/$T/rel/arm64/hook.tar ## out/$T/rel/amd64/hook.tar ## Build tarballs for distribution
+dist: out/$T/rel/amd64/hook.tar ## out/$T/rel/amd64/hook.tar ## Build tarballs for distribution
 dbg-dist: out/$T/dbg/$(ARCH)/hook.tar ## Build debug enabled tarball
 dist dbg-dist:
+	set -x
 	for f in $^; do
 	case $$f in
 	*amd64*) arch=x86_64 ;;
