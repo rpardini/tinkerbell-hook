@@ -170,8 +170,12 @@ case "${1:-"build"}" in
 		declare kernel_oci_version="" kernel_oci_image=""
 		get_kernel_info_dict "${kernel_id}"
 		set_kernel_vars_from_info_dict
+		
 		echo "Kernel calculate version method: ${kernel_info[VERSION_FUNC]}" >&2
 		"${kernel_info[VERSION_FUNC]}"
+		
+		# @TODO: once we've the version, we can determine if it is already available in the OCI registry; if so, just pull and skip building.
+		
 		echo "Kernel build method: ${kernel_info[BUILD_FUNC]}" >&2
 		"${kernel_info[BUILD_FUNC]}"
 
