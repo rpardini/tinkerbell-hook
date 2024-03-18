@@ -81,7 +81,7 @@ RUN set -x && \
     make -j"$(getconf _NPROCESSORS_ONLN)" INSTALL_MOD_PATH=/tmp/kernel-modules modules_install && \
     ( DVER=$(basename $(find /tmp/kernel-modules/lib/modules/ -mindepth 1 -maxdepth 1)) && \
       cd /tmp/kernel-modules/lib/modules/$DVER && \
-      rm build source  && \
+      rm build source )  && \
     case "$KERNEL_ARCH" in \
     arm64) \
         make -j"$(getconf _NPROCESSORS_ONLN)" INSTALL_DTBS_PATH=/tmp/kernel-modules/boot/dtb dtbs_install; \
