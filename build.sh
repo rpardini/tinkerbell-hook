@@ -84,20 +84,16 @@ case "${1:-"build"}" in
 
 		echo "Kernel calculate version method: ${kernel_info[VERSION_FUNC]}" >&2
 		"${kernel_info[VERSION_FUNC]}"
-		
-		
 
-		# @TODO: once we've the version, we can determine if it is already available in the OCI registry; if so, just pull and skip building.
-
-
+		# @TODO: once we've the version, we can determine if it is already available in the OCI registry; if so, just pull and skip building/pushing
 
 		echo "Kernel build method: ${kernel_info[BUILD_FUNC]}" >&2
 		"${kernel_info[BUILD_FUNC]}"
 
-		#docker buildx build --progress=plain -t k8s-avengers/el-kernel-lts:rpms "${build_args[@]}" .
+		# Push it to the OCI registry
+		echo "Kernel built; pushing to ${kernel_oci_image}" >&2
+		docker push "${kernel_oci_image}" || true
 
-		#declare outdir="out-${KERNEL_MAJOR}.${KERNEL_MINOR}-${FLAVOR}-el${EL_MAJOR_VERSION}"
-		#docker run -it -v "$(pwd)/${outdir}:/host" k8s-avengers/el-kernel-lts:rpms sh -c "cp -rpv /out/* /host/"
 		;;
 
 esac
