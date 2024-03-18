@@ -2,7 +2,8 @@
 
 function obtain_linuxkit_binary_cached() {
 
-	declare linuxkit_version="${linuxkit_version:-"1.2.0"}" linuxkit_arch=""
+	declare -g -r linuxkit_version="${linuxkit_version:-"1.0.1"}" 
+	declare linuxkit_arch=""
 	# determine the arch to download from current arch
 	case "$(uname -m)" in
 		"x86_64") linuxkit_arch="amd64" ;;
