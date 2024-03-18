@@ -42,6 +42,13 @@ function calculate_kernel_version_default() {
 	short_input_hash="${input_hash:0:8}"
 	kernel_oci_version="${KERNEL_MAJOR}.${KERNEL_MINOR}.${KERNEL_POINT_RELEASE}-${short_input_hash}"
 	kernel_oci_image="${HOOK_OCI_BASE}${kernel_id}:${kernel_oci_version}"
+
+	# Log the obtained version & images to stderr
+	echo "Kernel arch: ${KERNEL_ARCH} (for ARCH ${ARCH})" >&2
+	echo "Kernel version: ${KERNEL_MAJOR}.${KERNEL_MINOR}.${KERNEL_POINT_RELEASE}" >&2
+	echo "Kernel OCI version: ${kernel_oci_version}" >&2
+	echo "Kernel OCI image: ${kernel_oci_image}" >&2
+	echo "Kernel cross-compiler: ${KERNEL_CROSS_COMPILE} (in pkgs ${KERNEL_CROSS_COMPILE_PKGS})"
 }
 
 function common_build_args_kernel_default() {
