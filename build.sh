@@ -3,6 +3,7 @@
 set -e
 
 source bash/linuxkit.sh
+source bash/hook-lk-containers.sh
 source kernel/bash/common.sh
 source kernel/bash/kernel_default.sh
 source kernel/bash/kernel_armbian.sh
@@ -120,6 +121,15 @@ case "${1:-"build"}" in
 			docker pull "${kernel_oci_image}" || true
 			# @TODO: if pull fails, build like build-kernel would.
 		fi
+		
+		# Build the containers in this repo used in the LinuxKit YAML;
+		build_hook_linuxkit_container hook-bootkit HOOK_CONTAINER_BOOTKIT_IMAGE
+		build_hook_linuxkit_container hook-docker HOOK_CONTAINER_DOCKER_IMAGE
+		build_hook_linuxkit_container hook-mdev HOOK_CONTAINER_MDEV_IMAGE
+		
+		
+		
+		
 
 		# Template the linuxkit configuration file.
 		# - You'd think linuxkit would take --build-args or something by now, but no.
@@ -130,7 +140,10 @@ case "${1:-"build"}" in
 		# shellcheck disable=SC2002 # Again, no, I love my cat, leave me alone
 		cat "hook.template.yaml" |
 			HOOK_KERNEL_IMAGE="${kernel_oci_image}" HOOK_KERNEL_ID="${kernel_id}" \
-				envsubst '$HOOK_KERNEL_IMAGE $HOOK_KERNEL_ID' > "hook.${kernel_id}.yaml"
+			HOOK_CONTAINER_BOOTKIT_IMAGE="${HOOK_CONTAINER_BOOTKIT_IMAGE}" \
+			HOOK_CONTAINER_DOCKER_IMAGE="${HOOK_CONTAINER_DOCKER_IMAGE}" \
+			HOOK_CONTAINER_MDEV_IMAGE="${HOOK_CONTAINER_MDEV_IMAGE}" \
+				envsubst '$HOOK_KERNEL_IMAGE $HOOK_KERNEL_ID $HOOK_CONTAINER_BOOTKIT_IMAGE $HOOK_CONTAINER_DOCKER_IMAGE $HOOK_CONTAINER_MDEV_IMAGE' > "hook.${kernel_id}.yaml"
 
 		declare -g linuxkit_bin=""
 		obtain_linuxkit_binary_cached # sets "${linuxkit_bin}"

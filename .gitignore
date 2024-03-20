@@ -2,7 +2,6 @@ bin/
 dbg/
 dist/
 .env
-hook-*
 !/hook-bootkit/
 !/hook-docker/
 !/hook-mdev/

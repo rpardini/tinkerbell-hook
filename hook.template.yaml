@@ -1,6 +1,9 @@
 # Attention, this is a template that is run through envsubst, but with a specific list of variables to replace. Thus:
 # - HOOK_KERNEL_IMAGE: ${HOOK_KERNEL_IMAGE}
 # - HOOK_KERNEL_ID: ${HOOK_KERNEL_ID}
+# - HOOK_CONTAINER_BOOTKIT_IMAGE: ${HOOK_CONTAINER_BOOTKIT_IMAGE}
+# - HOOK_CONTAINER_DOCKER_IMAGE: ${HOOK_CONTAINER_DOCKER_IMAGE}
+# - HOOK_CONTAINER_MDEV_IMAGE: ${HOOK_CONTAINER_MDEV_IMAGE}
 # - Other variables are not replaced: for example this is a literal dollarsign-SOMETHING: $SOMETHING and with braces: ${SOMETHING}
 
 kernel:
@@ -28,8 +31,10 @@ onboot:
     command: [ "/etc/ip/vlan.sh" ]
 
 services:
+
+
   - name: mdev
-    image: quay.io/tinkerbell/hook-mdev:latest
+    image: "${HOOK_CONTAINER_MDEV_IMAGE}"
     command: [ "mdev", "-v", "-S", "-df" ]
     capabilities:
       - all
@@ -71,7 +76,7 @@ services:
       - /var/run:/var/run
 
   - name: hook-docker
-    image: quay.io/tinkerbell/hook-docker:latest
+    image: "${HOOK_CONTAINER_DOCKER_IMAGE}"
     capabilities:
       - all
     net: host
@@ -94,7 +99,7 @@ services:
         - /var/run/worker
 
   - name: hook-bootkit
-    image: quay.io/tinkerbell/hook-bootkit:latest
+    image: "${HOOK_CONTAINER_BOOTKIT_IMAGE}"
     capabilities:
       - all
     net: host
