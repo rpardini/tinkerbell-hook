@@ -114,11 +114,12 @@ case "${1:-"build"}" in
 
 		# If the image is in the local docker cache, skip building
 		if [[ -n "$(docker images -q "${kernel_oci_image}")" ]]; then
-			echo "Kernel image ${kernel_oci_image} already in local cache; skipping pull" >&2
+			echo "Kernel image ${kernel_oci_image} already in local cache; trying a pull to update, but tolerate failures..." >&2
+			docker pull "${kernel_oci_image}" || echo "Pull failed, using local image ${kernel_oci_image}" >&2
 		else
 			# Pull the kernel from the OCI registry
 			echo "Pulling kernel from ${kernel_oci_image}" >&2
-			docker pull "${kernel_oci_image}" || true
+			docker pull "${kernel_oci_image}"
 			# @TODO: if pull fails, build like build-kernel would.
 		fi
 		
