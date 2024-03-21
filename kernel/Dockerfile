@@ -73,19 +73,23 @@ RUN set -x && \
     cp System.map /out
 
 
-# Modules and Device Tree binaries
+# Modules, from lib/modules go into kernel.tar (will be extracted in root filesystem by linuxkit)
 RUN set -x && \
     make -s -j"$(getconf _NPROCESSORS_ONLN)" INSTALL_MOD_PATH=/tmp/kernel-modules modules_install && \
     ( DVER=$(basename $(find /tmp/kernel-modules/lib/modules/ -mindepth 1 -maxdepth 1)) && \
       cd /tmp/kernel-modules/lib/modules/$DVER && \
-      rm build source )  && \
-    case "$KERNEL_ARCH" in \
-    arm64) \
-        make -s -j"$(getconf _NPROCESSORS_ONLN)" INSTALL_DTBS_PATH=/tmp/kernel-modules/boot/dtb dtbs_install; \
-        ;; \
-    esac && \
+      rm build source ) && \
     ( cd /tmp/kernel-modules && tar cf /out/kernel.tar . )
 
+# For arches that have DTB's, eg arm64; they go separately into dtbs.tar
+RUN set -x && \
+    mkdir -p /tmp/kernel-dtb && \
+    case "$KERNEL_ARCH" in \
+    arm64) \
+        make -s -j"$(getconf _NPROCESSORS_ONLN)" INSTALL_DTBS_PATH=/tmp/kernel-dtb dtbs_install; \
+        ;; \
+    esac && \
+     ( cd /tmp/kernel-dtb && tar cvf /out/dtbs.tar . )
 
 FROM scratch
 ENTRYPOINT []
