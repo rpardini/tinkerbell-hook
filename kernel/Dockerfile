@@ -81,7 +81,7 @@ RUN set -x && \
       rm build source ) && \
     ( cd /tmp/kernel-modules && tar cf /out/kernel.tar . )
 
-# For arches that have DTB's, eg arm64; they go separately into dtbs.tar
+# For arches that have DTB's, eg arm64; they go separately into dtbs.tar; for arches that don't (x86), an empty dtbs.tar is created
 RUN set -x && \
     mkdir -p /tmp/kernel-dtb && \
     case "$KERNEL_ARCH" in \
