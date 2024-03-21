@@ -89,7 +89,7 @@ RUN set -x && \
         make -s -j"$(getconf _NPROCESSORS_ONLN)" INSTALL_DTBS_PATH=/tmp/kernel-dtb dtbs_install; \
         ;; \
     esac && \
-     ( cd /tmp/kernel-dtb && tar cvf /out/dtbs.tar . )
+     ( cd /tmp/kernel-dtb && tar czvf /out/dtbs.tar.gz . )
 
 FROM scratch
 ENTRYPOINT []
