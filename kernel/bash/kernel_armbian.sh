@@ -25,7 +25,7 @@ function calculate_kernel_version_armbian() {
 	declare -g ARMBIAN_KERNEL_MAJOR_MINOR_POINT="$(echo -n "${ARMBIAN_KERNEL_VERSION}" | cut -d "-" -f 1)"
 	echo "ARMBIAN_KERNEL_MAJOR_MINOR_POINT: ${ARMBIAN_KERNEL_MAJOR_MINOR_POINT}" >&2
 
-	declare -g ARMBIAN_KERNEL_DOCKERFILE="kernel/Dockerfile.armbian.${kernel_id}"
+	declare -g ARMBIAN_KERNEL_DOCKERFILE="kernel/Dockerfile.autogen.armbian.${kernel_id}"
 
 	declare oras_version="1.2.0-beta.1" # @TODO bump this once it's released; yes it's much better than 1.1.x's
 	declare oras_down_url="https://github.com/oras-project/oras/releases/download/v${oras_version}/oras_${oras_version}_linux_amd64.tar.gz"
@@ -88,8 +88,8 @@ function calculate_kernel_version_armbian() {
 function build_kernel_armbian() {
 	# smth else
 	echo "Building armbian kernel from deb-tar at ${ARMBIAN_KERNEL_FULL_ORAS_REF_DEB_TAR}" >&2
-	echo "Will build Dockerfile ${ARMBIAN_ORAS_DOCKERFILE}" >&2
+	echo "Will build Dockerfile ${ARMBIAN_KERNEL_DOCKERFILE}" >&2
 
 	# Build the Dockerfile; don't specify platform, our Dockerfile is multiarch, thus you can get build x86 kernels in arm64 hosts and vice-versa
-	docker buildx build --load --progress=plain -t "${kernel_oci_image}" -f "kernel/armbian.Dockerfile.${kernel_id}" kernel
+	docker buildx build --load --progress=plain -t "${kernel_oci_image}" -f "${ARMBIAN_KERNEL_DOCKERFILE}" kernel
 }
