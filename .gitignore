@@ -10,3 +10,5 @@ hook*.*.yaml
 out/
 *.swp
 .idea
+kernel/Dockerfile.autogen.*
+linuxkit-*-*-*
