@@ -1,30 +1,95 @@
 #!/usr/bin/env bash
 
-set -e
+declare -g ARMBIAN_BASE_ORAS_REF="${ARMBIAN_BASE_ORAS_REF:-"ghcr.io/armbian/os"}"
 
-declare -g ARMBIAN_OCI_BASE="ghcr.io/armbian/os/"
+function calculate_kernel_version_armbian() {
+	: "${kernel_id:?"ERROR: kernel_id is not defined"}"
+	echo "Calculating version of Armbian kernel..." >&2
+
+	declare -g ARMBIAN_KERNEL_BASE_ORAS_REF="${ARMBIAN_BASE_ORAS_REF}/${ARMBIAN_KERNEL_ARTIFACT}"
+
+	# If ARMBIAN_KERNEL_VERSION is unset, for using the latest kernel, this requires skopeo & jq
+	if [[ -z "${ARMBIAN_KERNEL_VERSION}" ]]; then
+		declare skopeo_image="quay.io/skopeo/stable:latest"
+		echo "ARMBIAN_KERNEL_VERSION is unset, obtaining the most recently pushed-to tag of ${ARMBIAN_KERNEL_BASE_ORAS_REF}" >&2
+		echo "Getting most recent tag for ${ARMBIAN_KERNEL_BASE_ORAS_REF} via skopeo ${skopeo_image}..." >&2
+		docker pull "${skopeo_image}" # Pull separately to avoid tty hell in the subshell below
+		ARMBIAN_KERNEL_VERSION="$(docker run "${skopeo_image}" list-tags "docker://${ARMBIAN_KERNEL_BASE_ORAS_REF}" | jq -r ".Tags[]" | tail -1)"
+		echo "Using most recent tag: ${ARMBIAN_KERNEL_VERSION}" >&2
+	fi
+
+	# output ID is just the kernel_id
+	declare -g OUTPUT_ID="${kernel_id}"
+
+	declare -g ARMBIAN_KERNEL_FULL_ORAS_REF_DEB_TAR="${ARMBIAN_KERNEL_BASE_ORAS_REF}:${ARMBIAN_KERNEL_VERSION}"
+	declare -g ARMBIAN_KERNEL_MAJOR_MINOR_POINT="$(echo -n "${ARMBIAN_KERNEL_VERSION}" | cut -d "-" -f 1)"
+	echo "ARMBIAN_KERNEL_MAJOR_MINOR_POINT: ${ARMBIAN_KERNEL_MAJOR_MINOR_POINT}" >&2
+
+	declare -g ARMBIAN_KERNEL_DOCKERFILE="kernel/Dockerfile.armbian.${kernel_id}"
+
+	declare oras_version="1.2.0-beta.1" # @TODO bump this once it's released; yes it's much better than 1.1.x's
+	declare oras_down_url="https://github.com/oras-project/oras/releases/download/v${oras_version}/oras_${oras_version}_linux_amd64.tar.gz"
+
+	# Lets create a Dockerfile that will be used to obtain the artifacts needed, using ORAS binary
+	echo "Creating Dockerfile '${ARMBIAN_KERNEL_DOCKERFILE}'... "
+	cat <<- ARMBIAN_ORAS_DOCKERFILE > "${ARMBIAN_KERNEL_DOCKERFILE}"
+		FROM debian:stable as downloader
+		# Install ORAS binary tool from GitHub releases
+		RUN apt update && apt install -y curl dpkg-dev && \
+		      curl -L -o /oras.tar.gz ${oras_down_url} && \
+		      tar -xvf /oras.tar.gz -C /usr/local/bin/ oras && \
+		      chmod +x /usr/local/bin/oras && \
+		      oras version
+
+		FROM downloader as downloaded
+
+		# lets create the output dir
+		WORKDIR /armbian/output
+		RUN echo getting kernel from ${ARMBIAN_KERNEL_FULL_ORAS_REF_DEB_TAR}
+
+		WORKDIR /armbian
+
+		# Pull the image from oras. This will contain a .tar file...
+		RUN oras pull "${ARMBIAN_KERNEL_FULL_ORAS_REF_DEB_TAR}"
+
+		# ... extract the .tar file to get .deb packages in the "global" subdir...
+		RUN tar -xvf *.tar
+		WORKDIR /armbian/global
+
+		# ... extract the contents of the .deb packages linuxq-image-* ...
+		RUN dpkg-deb --extract linux-image-*.deb /armbian/image
+
+		WORKDIR /armbian/image
+
+		# Get the kernel image...
+		RUN cp -v boot/vmlinuz* /armbian/output/kernel
+
+		# Create a tarball with the modules in lib
+		RUN tar -cvf /armbian/output/kernel.tar lib
+
+		# Show the contents of the output dir
+		WORKDIR /armbian/output
+		RUN ls -lahtS
+
+		# Output layer should be in the layout expected by LinuxKit
+		FROM scratch
+		COPY --from=downloaded /armbian/output/* /
+	ARMBIAN_ORAS_DOCKERFILE
+
+	declare input_hash="" short_input_hash=""
+	input_hash="$(cat "${ARMBIAN_KERNEL_DOCKERFILE}" | sha256sum - | cut -d ' ' -f 1)"
+	short_input_hash="${input_hash:0:8}"
+	kernel_oci_version="${ARMBIAN_KERNEL_MAJOR_MINOR_POINT}-${short_input_hash}"
+	kernel_oci_image="${HOOK_OCI_BASE}hook-${kernel_id}:${kernel_oci_version}"
+	echo "kernel_oci_version: ${kernel_oci_version}" >&2
+	echo "kernel_oci_image: ${kernel_oci_image}" >&2
+}
 
 function build_kernel_armbian() {
 	# smth else
-	echo "Building armbian kernel" >&2
+	echo "Building armbian kernel from deb-tar at ${ARMBIAN_KERNEL_FULL_ORAS_REF_DEB_TAR}" >&2
+	echo "Will build Dockerfile ${ARMBIAN_ORAS_DOCKERFILE}" >&2
 
-	declare oci_ref="${ARMBIAN_OCI_BASE}${ARMBIAN_KERNEL_ARTIFACT}"
-	echo "Using OCI ref: ${oci_ref}" >&2
-
-	# Get a list of tags from the ref using skopeo
-	declare oci_version="${ARMBIAN_KERNEL_VERSION:-""}"
-
-	if [[ "${oci_version}" == "" ]]; then
-		echo "Getting most recent tag for ${oci_ref}" >&2
-		oci_version="$(skopeo list-tags docker://${oci_ref} | jq -r ".Tags[]" | tail -1)"
-		echo "Using most recent tag: ${oci_version}" >&2
-	fi
-
-	declare full_oci_ref="${oci_ref}:${oci_version}"
-	echo "Using full OCI ref: ${full_oci_ref}" >&2
-
-	# Now use ORAS to pull the .tar that's inside that ref
-
-	# <WiP>
-
+	# Build the Dockerfile; don't specify platform, our Dockerfile is multiarch, thus you can get build x86 kernels in arm64 hosts and vice-versa
+	docker buildx build --load --progress=plain -t "${kernel_oci_image}" -f "kernel/armbian.Dockerfile.${kernel_id}" kernel
 }

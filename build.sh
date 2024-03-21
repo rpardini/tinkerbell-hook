@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+# less insane bash error control
+set -o pipefail
 set -e
 
 source bash/linuxkit.sh
@@ -8,26 +10,27 @@ source kernel/bash/common.sh
 source kernel/bash/kernel_default.sh
 source kernel/bash/kernel_armbian.sh
 
-# each entry in this array needs a corresponding one in the kernel_data dictionary below
+# each entry in this array needs a corresponding one in the kernel_data dictionary-of-stringified-dictionaries below
 declare -a kernels=(
-	"hook-default-arm64" # Hook default kernel, source code stored in `kernel` dir in this repo
-	"hook-default-amd64" # Hook default kernel, source code stored in `kernel` dir in this repo
-	#"armbian-uefi-current-arm64" # Armbian generic current UEFI kernel, usually an LTS release like 6.6.y
-	#"armbian-uefi-current-amd64" # Armbian generic current UEFI kernel, usually an LTS release like 6.6.y (Armbian calls it x86)
-	"armbian-meson64-current" # Armbian meson64 (Amlogic) current (some LTS version) kernel
+	"hook-default-arm64"         # Hook default kernel, source code stored in `kernel` dir in this repo
+	"hook-default-amd64"         # Hook default kernel, source code stored in `kernel` dir in this repo
+	"armbian-meson64-current"    # Armbian meson64 (Amlogic) current (some LTS version) kernel
+	"armbian-uefi-current-arm64" # Armbian generic current UEFI kernel, usually an LTS release like 6.6.y
+	"armbian-uefi-current-amd64" # Armbian generic current UEFI kernel, usually an LTS release like 6.6.y (Armbian calls it x86)
 )
 
-# method & arch are always required, others are method-specific
+# method & arch are always required, others are method-specific. excuse the syntax; bash has no dicts of dicts
 declare -A kernel_data=(
 	["hook-default-arm64"]="['METHOD']='default' ['ARCH']='aarch64' ['KERNEL_MAJOR']='5' ['KERNEL_MINOR']='10' ['KCONFIG']='generic' "
 	["hook-default-amd64"]="['METHOD']='default' ['ARCH']='x86_64' ['KERNEL_MAJOR']='5' ['KERNEL_MINOR']='10' ['KCONFIG']='generic' "
 	["armbian-meson64-current"]="['METHOD']='armbian' ['ARCH']='aarch64' ['ARMBIAN_KERNEL_ARTIFACT']='kernel-meson64-current' ['ARMBIAN_KERNEL_VERSION']='6.6.22-S6a64-D7cc9-P8ee5-C1d33H61a9-HK01ba-Ve377-Bf200-R448a' "
-	#["armbian-uefi-current-arm64"]="['METHOD']='armbian' ['ARCH']='aarch64' ['ARMBIAN_KERNEL_ARTIFACT']='kernel-arm64-current' ['ARMBIAN_KERNEL_VERSION']='6.6.22-S6a64-D0696-Pdd93-C334eHfe66-HK01ba-Vc222-Bf200-R448a' "
-	#["armbian-uefi-current-amd64"]="['METHOD']='armbian' ['ARCH']='x86_64' ['ARMBIAN_KERNEL_ARTIFACT']='kernel-x86-current' "
+	["armbian-uefi-current-arm64"]="['METHOD']='armbian' ['ARCH']='aarch64' ['ARMBIAN_KERNEL_ARTIFACT']='kernel-arm64-current' ['ARMBIAN_KERNEL_VERSION']='6.6.22-S6a64-D0696-Pdd93-C334eHfe66-HK01ba-Vc222-Bf200-R448a' "
+	["armbian-uefi-current-amd64"]="['METHOD']='armbian' ['ARCH']='x86_64' ['ARMBIAN_KERNEL_ARTIFACT']='kernel-x86-current' " # nb: no ARMBIAN_KERNEL_VERSION, will use the first tag returned, high traffic, low cache rate
 )
 
-declare -g HOOK_OCI_BASE="quay.io/tinkerbellrpardini/kernel-"
+declare -g HOOK_OCI_BASE="${HOOK_OCI_BASE:-"quay.io/tinkerbellrpardini/kernel-"}"
 
+# @TODO: only works on Debian/Ubuntu-like
 # Grab tooling needed: jq, from apt
 [[ ! -f /usr/bin/jq ]] && apt update && apt install -y jq
 # Grab tooling needed: envsubst, from gettext
@@ -180,6 +183,11 @@ case "${1:-"build"}" in
 
 		rmdir "${lk_output_dir}"
 
+		;;
+
+	*)
+		echo "Unknown command: ${1}; try build / kernel-build / kernel-config / gha-matrix" >&2
+		exit 1
 		;;
 
 esac
