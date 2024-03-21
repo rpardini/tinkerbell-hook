@@ -14,12 +14,14 @@ declare -a kernels=(
 	"hook-default-amd64" # Hook default kernel, source code stored in `kernel` dir in this repo
 	#"armbian-uefi-current-arm64" # Armbian generic current UEFI kernel, usually an LTS release like 6.6.y
 	#"armbian-uefi-current-amd64" # Armbian generic current UEFI kernel, usually an LTS release like 6.6.y (Armbian calls it x86)
+	"armbian-meson64-current" # Armbian meson64 (Amlogic) current (some LTS version) kernel
 )
 
 # method & arch are always required, others are method-specific
 declare -A kernel_data=(
 	["hook-default-arm64"]="['METHOD']='default' ['ARCH']='aarch64' ['KERNEL_MAJOR']='5' ['KERNEL_MINOR']='10' ['KCONFIG']='generic' "
 	["hook-default-amd64"]="['METHOD']='default' ['ARCH']='x86_64' ['KERNEL_MAJOR']='5' ['KERNEL_MINOR']='10' ['KCONFIG']='generic' "
+	["armbian-meson64-current"]="['METHOD']='armbian' ['ARCH']='aarch64' ['ARMBIAN_KERNEL_ARTIFACT']='kernel-meson64-current' ['ARMBIAN_KERNEL_VERSION']='6.6.22-S6a64-D7cc9-P8ee5-C1d33H61a9-HK01ba-Ve377-Bf200-R448a' "
 	#["armbian-uefi-current-arm64"]="['METHOD']='armbian' ['ARCH']='aarch64' ['ARMBIAN_KERNEL_ARTIFACT']='kernel-arm64-current' ['ARMBIAN_KERNEL_VERSION']='6.6.22-S6a64-D0696-Pdd93-C334eHfe66-HK01ba-Vc222-Bf200-R448a' "
 	#["armbian-uefi-current-amd64"]="['METHOD']='armbian' ['ARCH']='x86_64' ['ARMBIAN_KERNEL_ARTIFACT']='kernel-x86-current' "
 )
@@ -122,15 +124,11 @@ case "${1:-"build"}" in
 			docker pull "${kernel_oci_image}"
 			# @TODO: if pull fails, build like build-kernel would.
 		fi
-		
+
 		# Build the containers in this repo used in the LinuxKit YAML;
 		build_hook_linuxkit_container hook-bootkit HOOK_CONTAINER_BOOTKIT_IMAGE
 		build_hook_linuxkit_container hook-docker HOOK_CONTAINER_DOCKER_IMAGE
 		build_hook_linuxkit_container hook-mdev HOOK_CONTAINER_MDEV_IMAGE
-		
-		
-		
-		
 
 		# Template the linuxkit configuration file.
 		# - You'd think linuxkit would take --build-args or something by now, but no.
@@ -141,9 +139,9 @@ case "${1:-"build"}" in
 		# shellcheck disable=SC2002 # Again, no, I love my cat, leave me alone
 		cat "hook.template.yaml" |
 			HOOK_KERNEL_IMAGE="${kernel_oci_image}" HOOK_KERNEL_ID="${kernel_id} from ${kernel_oci_image}" \
-			HOOK_CONTAINER_BOOTKIT_IMAGE="${HOOK_CONTAINER_BOOTKIT_IMAGE}" \
-			HOOK_CONTAINER_DOCKER_IMAGE="${HOOK_CONTAINER_DOCKER_IMAGE}" \
-			HOOK_CONTAINER_MDEV_IMAGE="${HOOK_CONTAINER_MDEV_IMAGE}" \
+				HOOK_CONTAINER_BOOTKIT_IMAGE="${HOOK_CONTAINER_BOOTKIT_IMAGE}" \
+				HOOK_CONTAINER_DOCKER_IMAGE="${HOOK_CONTAINER_DOCKER_IMAGE}" \
+				HOOK_CONTAINER_MDEV_IMAGE="${HOOK_CONTAINER_MDEV_IMAGE}" \
 				envsubst '$HOOK_KERNEL_IMAGE $HOOK_KERNEL_ID $HOOK_CONTAINER_BOOTKIT_IMAGE $HOOK_CONTAINER_DOCKER_IMAGE $HOOK_CONTAINER_MDEV_IMAGE' > "hook.${kernel_id}.yaml"
 
 		declare -g linuxkit_bin=""
