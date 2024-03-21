@@ -62,9 +62,11 @@ case "${1:-"build"}" in
 		else
 			echo "kernels_json=${full_json}" >> "${GITHUB_OUTPUT}"
 		fi
+
+		echo -n "${full_json}" # to stdout, for cli/jq etc
 		;;
 
-	kernel-config)
+	kernel-config | config-kernel)
 		# bail if not interactive (stdin is a terminal)
 		[[ ! -t 0 ]] && echo "not interactive, can't configure" >&2 && exit 1
 
@@ -82,7 +84,7 @@ case "${1:-"build"}" in
 		"${kernel_info[CONFIG_FUNC]}"
 		;;
 
-	kernel-build)
+	kernel-build | build-kernel)
 		declare -A kernel_info
 		declare kernel_oci_version="" kernel_oci_image=""
 		get_kernel_info_dict "${kernel_id}"
@@ -102,7 +104,7 @@ case "${1:-"build"}" in
 
 		;;
 
-	build) # Build Hook proper, using the specified kernel
+	build | linuxkit | all) # Build Hook proper, using the specified kernel
 		declare -A kernel_info
 		declare kernel_oci_version="" kernel_oci_image=""
 		get_kernel_info_dict "${kernel_id}"
