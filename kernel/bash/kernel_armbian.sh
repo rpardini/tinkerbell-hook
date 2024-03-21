@@ -74,7 +74,7 @@ function calculate_kernel_version_armbian() {
 		WORKDIR /armbian/output
 		RUN ls -lahtS
 
-		# Output layer should be in the layout expected by LinuxKit
+		# Output layer should be in the layout expected by LinuxKit (dtbs.tar.gz is ignored)
 		FROM scratch
 		COPY --from=downloaded /armbian/output/* /
 	ARMBIAN_ORAS_DOCKERFILE
