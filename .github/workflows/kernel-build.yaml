@@ -1,0 +1,77 @@
+name: matrix
+on:
+  #schedule:
+  #  # every day at 5am UTC
+  #  - cron: '0 5 * * *'
+  workflow_dispatch:
+
+jobs:
+  
+  matrix_prep:
+    name: "Prepare matrix JSON"
+    runs-on: ubuntu-latest
+    outputs:
+      kernels_json: ${{ steps.prepare-matrix.outputs.kernels_json }}
+    steps:
+
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Docker Login to quay.io # Not stricly needed, this job should be read-only, but sometimes packages end up as "private" in quay.io
+        uses: docker/login-action@v3
+        with:
+          registry: quay.io  # Use robot account!
+          username: ${{ secrets.QUAY_USERNAME }}
+          password: ${{ secrets.QUAY_PASSWORD }}
+
+      - name: Run the matrix JSON preparation bash script
+        id: prepare-matrix
+        run: bash build.sh gha-matrix # This sets the output "kernels_json" internally
+  
+  
+  build:
+    runs-on: "ubuntu-latest" # ${{ matrix.arch.runner }}
+    strategy:
+      fail-fast: false # let other jobs try to complete if one fails
+      matrix:
+        include: ${{ fromJSON(needs.matrix_prep.outputs.kernels_json) }}
+    env:
+    name: "${{ matrix.arch }}: (${{ matrix.kernel }})"
+    
+    steps:
+
+      - name: Checkout build repo
+        uses: actions/checkout@v4
+
+      #- name: Set up QEMU
+      #  uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Docker Login to quay.io
+        uses: docker/login-action@v3
+        with:
+          registry: quay.io  # Use robot account!
+          username: ${{ secrets.QUAY_USERNAME }}
+          password: ${{ secrets.QUAY_PASSWORD }}
+
+      - name: Build Kernel ${{matrix.kernel}} (${{ matrix.arch }})
+        id: build-kernel
+        run: |
+          bash build.sh build-kernel "${{ matrix.kernel }}"
+
+      - name: Build Hook with Kernel ${{matrix.kernel}} (${{ matrix.arch }})
+        id: build-hook
+        run: |
+          bash build.sh build "${{ matrix.kernel }}"
+
+  release:
+    needs: [ build ] # depend on the previous jobs...
+    if: "${{ !cancelled() }}" # ... but run even if (some of) them failed, but not if job was cancelled
+    runs-on: ubuntu-latest
+    steps:
+      - name: List current dir
+        run: |
+          ls -lahtR
