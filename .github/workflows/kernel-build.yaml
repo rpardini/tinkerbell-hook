@@ -80,7 +80,7 @@ jobs:
       - name: Upload deb as artifact ${{ matrix.arch.name }} ${{ matrix.distro }}
         uses: actions/upload-artifact@v4
         with:
-          name: hook-tarballs
+          name: "hook-tarball-${{ matrix.kernel }}"
           path: out/*.tar.gz
 
   release:
@@ -89,10 +89,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       # Download the built artifacts from GH artifacts.  
-      - uses: actions/download-artifact@v3
-        name: Download hoook artifacts
+      - uses: actions/download-artifact@v4
+        name: Download hoook artifacts from all builds
         with:
-          name: hook-tarballs
+          name: "hook-tarball-*"
+          merge-multiple: true
           path: out
 
       - name: List artifacts downloaded
