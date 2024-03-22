@@ -13,17 +13,19 @@ source kernel/bash/kernel_armbian.sh
 # each entry in this array needs a corresponding one in the kernel_data dictionary-of-stringified-dictionaries below
 declare -a kernels=(
 	# Hook's own kernel, in kernel/ directory
-	"hook-default-arm64" # Hook default kernel, source code stored in `kernel` dir in this repo
-	"hook-default-amd64" # Hook default kernel, source code stored in `kernel` dir in this repo
+	"hook-default-arm64" # Hook default kernel, source code stored in `kernel` dir in this repo -- currently v5.10.213
+	"hook-default-amd64" # Hook default kernel, source code stored in `kernel` dir in this repo -- currently v5.10.213
 
 	# External kernels, taken from Armbian's OCI repos. Those are "exotic" kernels for certain SoC's.
-	"armbian-meson64-edge"    # Armbian meson64 (Amlogic) edge (release candidates or stable but rarely LTS) kernel
-	"armbian-bcm2711-current" # Armbian bcm2711 (Broadcom) current (latest stable) kernel; for the RaspberryPi 3b+/4b/5
-	"armbian-rockchip64-edge" # Armbian rockchip64 (Rockchip) edge (release candidates or stable but rarely LTS) kernel; NOT suitable for rk3588's, but yes for 3566/3568/3399
+	# edge = (release candidates or stable but rarely LTS, more aggressive patching)
+	# current = (LTS kernels, stable-ish patching)
+	"armbian-meson64-edge"    # Armbian meson64 (Amlogic) edge Khadas VIM3/3L, Radxa Zero/2, LibreComputer Potatos, and many more -- right now v6.7.10
+	"armbian-bcm2711-current" # Armbian bcm2711 (Broadcom) current, from RaspberryPi Foundation with many CNCF-landscape fixes and patches; for the RaspberryPi 3b+/4b/5 -- v6.6.22
+	"armbian-rockchip64-edge" # Armbian rockchip64 (Rockchip) edge, for many rk356x/3399 SoCs. Not for rk3588! -- right now v6.7.10
 
-	# Non exotic, EFI capable (edk2 or such, not u-boot+EFI) machines might use those:
-	"armbian-uefi-arm64-edge" # Armbian generic edge UEFI kernel
-	"armbian-uefi-x86-edge"   # Armbian generic edge UEFI kernel (Armbian calls it x86)
+	# EFI capable (edk2 or such, not u-boot+EFI) machines might use those:
+	"armbian-uefi-arm64-edge" # Armbian generic edge UEFI kernel - right now v6.8.1
+	"armbian-uefi-x86-edge"   # Armbian generic edge UEFI kernel (Armbian calls it x86) - right now v6.8.1
 )
 
 # method & arch are always required, others are method-specific. excuse the syntax; bash has no dicts of dicts
@@ -48,7 +50,6 @@ declare -g HOOK_KERNEL_OCI_BASE="${HOOK_KERNEL_OCI_BASE:-"quay.io/tinkerbellrpar
 declare -g HOOK_LK_CONTAINERS_OCI_BASE="${HOOK_LK_CONTAINERS_OCI_BASE:-"quay.io/tinkerbellrpardini/linuxkit-"}"
 
 declare -g SKOPEO_IMAGE="${SKOPEO_IMAGE:-"quay.io/skopeo/stable:latest"}"
-
 
 # @TODO: only works on Debian/Ubuntu-like
 # Grab tooling needed: jq, from apt
