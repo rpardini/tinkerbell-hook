@@ -13,13 +13,13 @@ source kernel/bash/kernel_armbian.sh
 # each entry in this array needs a corresponding one in the kernel_data dictionary-of-stringified-dictionaries below
 declare -a kernels=(
 	# Hook's own kernel, in kernel/ directory
-	"hook-default-arm64" # Hook default kernel, source code stored in `kernel` dir in this repo
-	"hook-default-amd64" # Hook default kernel, source code stored in `kernel` dir in this repo
-
-	# External kernels, taken from Armbian's OCI repos. Those are "exotic" kernels for certain SoC's.
-	"armbian-meson64-edge"    # Armbian meson64 (Amlogic) edge (release candidates or stable but rarely LTS) kernel
-	"armbian-bcm2711-current" # Armbian bcm2711 (Broadcom) current (latest stable) kernel; for the RaspberryPi 3b+/4b/5
-	"armbian-rockchip64-edge" # Armbian rockchip64 (Rockchip) edge (release candidates or stable but rarely LTS) kernel; NOT suitable for rk3588's, but yes for 3566/3568/3399
+## WAIT ##	"hook-default-arm64" # Hook default kernel, source code stored in `kernel` dir in this repo
+## WAIT ##	"hook-default-amd64" # Hook default kernel, source code stored in `kernel` dir in this repo
+## WAIT ##
+## WAIT ##	# External kernels, taken from Armbian's OCI repos. Those are "exotic" kernels for certain SoC's.
+## WAIT ##	"armbian-meson64-edge"    # Armbian meson64 (Amlogic) edge (release candidates or stable but rarely LTS) kernel
+## WAIT ##	"armbian-bcm2711-current" # Armbian bcm2711 (Broadcom) current (latest stable) kernel; for the RaspberryPi 3b+/4b/5
+## WAIT ##	"armbian-rockchip64-edge" # Armbian rockchip64 (Rockchip) edge (release candidates or stable but rarely LTS) kernel; NOT suitable for rk3588's, but yes for 3566/3568/3399
 
 	# Non exotic, EFI capable (edk2 or such, not u-boot+EFI) machines might use those:
 	"armbian-uefi-arm64-edge" # Armbian generic edge UEFI kernel
