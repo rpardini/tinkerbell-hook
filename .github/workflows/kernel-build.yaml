@@ -35,7 +35,6 @@ jobs:
       fail-fast: false # let other jobs try to complete if one fails
       matrix:
         include: ${{ fromJSON(needs.matrix_prep.outputs.kernels_json) }}
-    env:
     name: "${{ matrix.arch }}: (${{ matrix.kernel }})"
     
     steps:
