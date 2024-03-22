@@ -12,7 +12,25 @@ function calculate_kernel_version_armbian() {
 	if [[ -z "${ARMBIAN_KERNEL_VERSION}" ]]; then
 		echo "ARMBIAN_KERNEL_VERSION is unset, obtaining the most recently pushed-to tag of ${ARMBIAN_KERNEL_BASE_ORAS_REF}" >&2
 		echo "Getting most recent tag for ${ARMBIAN_KERNEL_BASE_ORAS_REF} via skopeo ${SKOPEO_IMAGE}..." >&2
-		docker pull "${SKOPEO_IMAGE}" # Pull separately to avoid tty hell in the subshell below
+
+		# A few tries to pull skopeo. Sorry. quay.io is undergoing an outage.
+		declare -i skopeo_pulled=0 skopeo_pull_tries=0 skopeo_max_pull_tries=5
+		while [[ "${skopeo_pulled}" -eq 0 && "${skopeo_pull_tries}" -lt "${skopeo_max_pull_tries}" ]]; do
+			if docker pull "${SKOPEO_IMAGE}"; then
+				echo "Pulled skopeo image ${SKOPEO_IMAGE} OK" >&2
+				skopeo_pulled=1
+			else
+				skopeo_pull_tries+=1
+				echo "Failed to pull ${SKOPEO_IMAGE}, retrying ${skopeo_pull_tries}/${skopeo_max_pull_tries}" >&2
+				sleep $((3 + RANDOM % 12)) # sleep a random amount of seconds
+			fi
+		done
+		if [[ "${skopeo_pulled}" -eq 0 ]]; then
+			echo "Failed to pull after ${skopeo_max_pull_tries} tries, exiting" >&2
+			exit 1
+		fi
+
+		# Pull separately to avoid tty hell in the subshell below
 		ARMBIAN_KERNEL_VERSION="$(docker run "${SKOPEO_IMAGE}" list-tags "docker://${ARMBIAN_KERNEL_BASE_ORAS_REF}" | jq -r ".Tags[]" | tail -1)"
 		echo "Using most recent tag: ${ARMBIAN_KERNEL_VERSION}" >&2
 	fi
