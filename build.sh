@@ -47,6 +47,9 @@ declare -A kernel_data=(
 declare -g HOOK_KERNEL_OCI_BASE="${HOOK_KERNEL_OCI_BASE:-"quay.io/tinkerbellrpardini/kernel-"}"
 declare -g HOOK_LK_CONTAINERS_OCI_BASE="${HOOK_LK_CONTAINERS_OCI_BASE:-"quay.io/tinkerbellrpardini/linuxkit-"}"
 
+declare -g SKOPEO_IMAGE="${SKOPEO_IMAGE:-"quay.io/skopeo/stable:latest"}"
+
+
 # @TODO: only works on Debian/Ubuntu-like
 # Grab tooling needed: jq, from apt
 [[ ! -f /usr/bin/jq ]] && apt update && apt install -y jq

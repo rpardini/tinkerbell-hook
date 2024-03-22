@@ -10,11 +10,10 @@ function calculate_kernel_version_armbian() {
 
 	# If ARMBIAN_KERNEL_VERSION is unset, for using the latest kernel, this requires skopeo & jq
 	if [[ -z "${ARMBIAN_KERNEL_VERSION}" ]]; then
-		declare skopeo_image="quay.io/skopeo/stable:latest"
 		echo "ARMBIAN_KERNEL_VERSION is unset, obtaining the most recently pushed-to tag of ${ARMBIAN_KERNEL_BASE_ORAS_REF}" >&2
-		echo "Getting most recent tag for ${ARMBIAN_KERNEL_BASE_ORAS_REF} via skopeo ${skopeo_image}..." >&2
-		docker pull "${skopeo_image}" # Pull separately to avoid tty hell in the subshell below
-		ARMBIAN_KERNEL_VERSION="$(docker run "${skopeo_image}" list-tags "docker://${ARMBIAN_KERNEL_BASE_ORAS_REF}" | jq -r ".Tags[]" | tail -1)"
+		echo "Getting most recent tag for ${ARMBIAN_KERNEL_BASE_ORAS_REF} via skopeo ${SKOPEO_IMAGE}..." >&2
+		docker pull "${SKOPEO_IMAGE}" # Pull separately to avoid tty hell in the subshell below
+		ARMBIAN_KERNEL_VERSION="$(docker run "${SKOPEO_IMAGE}" list-tags "docker://${ARMBIAN_KERNEL_BASE_ORAS_REF}" | jq -r ".Tags[]" | tail -1)"
 		echo "Using most recent tag: ${ARMBIAN_KERNEL_VERSION}" >&2
 	fi
 
