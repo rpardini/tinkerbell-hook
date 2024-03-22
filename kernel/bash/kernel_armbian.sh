@@ -83,7 +83,7 @@ function calculate_kernel_version_armbian() {
 	input_hash="$(cat "${ARMBIAN_KERNEL_DOCKERFILE}" | sha256sum - | cut -d ' ' -f 1)"
 	short_input_hash="${input_hash:0:8}"
 	kernel_oci_version="${ARMBIAN_KERNEL_MAJOR_MINOR_POINT}-${short_input_hash}"
-	kernel_oci_image="${HOOK_OCI_BASE}hook-${kernel_id}:${kernel_oci_version}"
+	kernel_oci_image="${HOOK_KERNEL_OCI_BASE}hook-${kernel_id}:${kernel_oci_version}"
 	echo "kernel_oci_version: ${kernel_oci_version}" >&2
 	echo "kernel_oci_image: ${kernel_oci_image}" >&2
 }

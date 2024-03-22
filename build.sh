@@ -12,25 +12,39 @@ source kernel/bash/kernel_armbian.sh
 
 # each entry in this array needs a corresponding one in the kernel_data dictionary-of-stringified-dictionaries below
 declare -a kernels=(
-	"hook-default-arm64"         # Hook default kernel, source code stored in `kernel` dir in this repo
-	"hook-default-amd64"         # Hook default kernel, source code stored in `kernel` dir in this repo
-	"armbian-meson64-current"    # Armbian meson64 (Amlogic) current (some LTS version) kernel
-	"armbian-meson64-edge"       # Armbian meson64 (Amlogic) edge (release candidates or stable but rarely LTS) kernel
-	"armbian-uefi-current-arm64" # Armbian generic current UEFI kernel, usually an LTS release like 6.6.y
-	"armbian-uefi-current-amd64" # Armbian generic current UEFI kernel, usually an LTS release like 6.6.y (Armbian calls it x86)
+	# Hook's own kernel, in kernel/ directory
+	"hook-default-arm64" # Hook default kernel, source code stored in `kernel` dir in this repo
+	"hook-default-amd64" # Hook default kernel, source code stored in `kernel` dir in this repo
+
+	# External kernels, taken from Armbian's OCI repos. Those are "exotic" kernels for certain SoC's.
+	"armbian-meson64-edge"    # Armbian meson64 (Amlogic) edge (release candidates or stable but rarely LTS) kernel
+	"armbian-bcm2711-current" # Armbian bcm2711 (Broadcom) current (latest stable) kernel; for the RaspberryPi 3b+/4b/5
+	"armbian-rockchip64-edge" # Armbian rockchip64 (Rockchip) edge (release candidates or stable but rarely LTS) kernel; NOT suitable for rk3588's, but yes for 3566/3568/3399
+
+	# Non exotic, EFI capable (edk2 or such, not u-boot+EFI) machines might use those:
+	"armbian-uefi-arm64-edge" # Armbian generic edge UEFI kernel
+	"armbian-uefi-x86-edge"   # Armbian generic edge UEFI kernel (Armbian calls it x86)
 )
 
 # method & arch are always required, others are method-specific. excuse the syntax; bash has no dicts of dicts
 declare -A kernel_data=(
+
 	["hook-default-arm64"]="['METHOD']='default' ['ARCH']='aarch64' ['KERNEL_MAJOR']='5' ['KERNEL_MINOR']='10' ['KCONFIG']='generic' "
 	["hook-default-amd64"]="['METHOD']='default' ['ARCH']='x86_64' ['KERNEL_MAJOR']='5' ['KERNEL_MINOR']='10' ['KCONFIG']='generic' "
-	["armbian-meson64-current"]="['METHOD']='armbian' ['ARCH']='aarch64' ['ARMBIAN_KERNEL_ARTIFACT']='kernel-meson64-current' ['ARMBIAN_KERNEL_VERSION']='6.6.22-S6a64-D7cc9-P8ee5-C1d33H61a9-HK01ba-Ve377-Bf200-R448a' "
-	["armbian-meson64-edge"]="['METHOD']='armbian' ['ARCH']='aarch64' ['ARMBIAN_KERNEL_ARTIFACT']='kernel-meson64-edge' ['ARMBIAN_KERNEL_VERSION']='6.7.10-S9865-D7cc9-P277e-C9b73H61a9-HK01ba-Ve377-Bf200-R448a' "
-	["armbian-uefi-current-arm64"]="['METHOD']='armbian' ['ARCH']='aarch64' ['ARMBIAN_KERNEL_ARTIFACT']='kernel-arm64-current' ['ARMBIAN_KERNEL_VERSION']='6.6.22-S6a64-D0696-Pdd93-C334eHfe66-HK01ba-Vc222-Bf200-R448a' "
-	["armbian-uefi-current-amd64"]="['METHOD']='armbian' ['ARCH']='x86_64' ['ARMBIAN_KERNEL_ARTIFACT']='kernel-x86-current' " # nb: no ARMBIAN_KERNEL_VERSION, will use the first tag returned, high traffic, low cache rate
+
+	# Armbian kernels, check https://github.com/orgs/armbian/packages?tab=packages&q=kernel- for possibilities
+	# nb: when no ARMBIAN_KERNEL_VERSION, will use the first tag returned, high traffic, low cache rate.
+	#     One might set eg ['ARMBIAN_KERNEL_VERSION']='6.7.10-S9865-D7cc9-P277e-C9b73H61a9-HK01ba-Ve377-Bf200-R448a' to use a fixed version.
+	["armbian-meson64-edge"]="['METHOD']='armbian' ['ARCH']='aarch64' ['ARMBIAN_KERNEL_ARTIFACT']='kernel-meson64-edge' "
+	["armbian-bcm2711-current"]="['METHOD']='armbian' ['ARCH']='aarch64' ['ARMBIAN_KERNEL_ARTIFACT']='kernel-bcm2711-current' "
+	["armbian-rockchip64-edge"]="['METHOD']='armbian' ['ARCH']='aarch64' ['ARMBIAN_KERNEL_ARTIFACT']='kernel-rockchip64-edge' "
+
+	# Armbian Generic UEFI kernels
+	["armbian-uefi-arm64-edge"]="['METHOD']='armbian' ['ARCH']='aarch64' ['ARMBIAN_KERNEL_ARTIFACT']='kernel-arm64-edge' "
+	["armbian-uefi-x86-edge"]="['METHOD']='armbian' ['ARCH']='x86_64' ['ARMBIAN_KERNEL_ARTIFACT']='kernel-x86-edge' "
 )
 
-declare -g HOOK_OCI_BASE="${HOOK_OCI_BASE:-"quay.io/tinkerbellrpardini/kernel-"}"
+declare -g HOOK_KERNEL_OCI_BASE="${HOOK_KERNEL_OCI_BASE:-"quay.io/tinkerbellrpardini/kernel-"}"
 
 # @TODO: only works on Debian/Ubuntu-like
 # Grab tooling needed: jq, from apt
