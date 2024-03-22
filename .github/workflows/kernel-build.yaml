@@ -13,46 +13,65 @@ jobs:
     outputs:
       created: ${{ steps.date_prep.outputs.created }} # refer to as ${{needs.prepare.outputs.created}}
       kernels_json: ${{ steps.prepare-matrix.outputs.kernels_json }}
+      arches_json: ${{ steps.prepare-matrix.outputs.arches_json }}
     steps:
-
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Docker Login to quay.io # Not stricly needed, this job should be read-only, but sometimes packages end up as "private" in quay.io
-        uses: docker/login-action@v3
-        with:
-          registry: quay.io  # Use robot account!
-          username: ${{ secrets.QUAY_USERNAME }}
-          password: ${{ secrets.QUAY_PASSWORD }}
-
-      - name: Prepare release ID (current date)
+      - name: Prepare release ID (current date) # @TODO maybe move this inside, and make it a hash of everything
         id: date_prep
-        run: |
-          echo "created=$(date -u +'%Y%m%d-%H%M')" >> "${GITHUB_OUTPUT}"
+        run: echo "created=$(date -u +'%Y%m%d-%H%M')" >> "${GITHUB_OUTPUT}"
 
       - name: Run the matrix JSON preparation bash script
         id: prepare-matrix
-        run: bash build.sh gha-matrix # This sets the output "kernels_json" internally
+        run: bash build.sh gha-matrix # This sets the output "kernels_json" & "arches_json" internally
   
-  
-  build:
-    needs: [ matrix_prep ] # depend on the previous job...
+  build-linuxkit-containers:
+    needs: [ matrix_prep ]
     runs-on: "ubuntu-latest" # @TODO: one day we might implement ${{ matrix.runner }} when we have arm64 runners. For now use amd64 GH runners & qemu; notice: qemu is only used to build hook-bootkit, hook-mdev, and hook-docker
     strategy:
-      fail-fast: false # let other jobs try to complete if one fails
+      fail-fast: true
       matrix:
-        include: ${{ fromJSON(needs.matrix_prep.outputs.kernels_json) }}
-    name: "${{ matrix.arch }}: (${{ matrix.kernel }})"
-    
+        include: ${{ fromJSON(needs.matrix_prep.outputs.arches_json) }}
+    name: "LinuxKit containers for ${{ matrix.docker_arch }}"
     steps:
-
       - name: Checkout build repo
         uses: actions/checkout@v4
 
-      #- name: Set up QEMU
-      #  uses: docker/setup-qemu-action@v3
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Docker Login to quay.io
+        uses: docker/login-action@v3
+        with:
+          registry: quay.io
+          username: ${{ secrets.QUAY_USERNAME }}
+          password: ${{ secrets.QUAY_PASSWORD }}
+
+      - name: Build and Push LinuxKit containers for ${{matrix.docker_arch}}
+        id: build-linuxkit-containers
+        env:
+          DOCKER_ARCH: "${{ matrix.docker_arch }}"
+          DO_PUSH: "yes"
+        run: bash build.sh linuxkit-containers
+  
+  build-kernels:
+    needs: [ matrix_prep ] # depend on the previous job...
+    runs-on: "ubuntu-latest" # @TODO: one day we might implement ${{ matrix.runner }} when we have arm64 runners. For now use amd64 GH runners & qemu; notice: qemu is only used to build hook-bootkit, hook-mdev, and hook-docker
+    strategy:
+      fail-fast: false # let other jobs try to complete if one fails, kernels might take long, and they'd be skipped on the next run
+      matrix:
+        include: ${{ fromJSON(needs.matrix_prep.outputs.kernels_json) }}
+    name: "${{ matrix.arch }}: (${{ matrix.kernel }})"
+    steps:
+      - name: Checkout build repo
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx # nb: no need for qemu here, kernels are cross-compiled, instead of the compilation being emulated
         id: buildx
         uses: docker/setup-buildx-action@v3
 
@@ -63,19 +82,43 @@ jobs:
           username: ${{ secrets.QUAY_USERNAME }}
           password: ${{ secrets.QUAY_PASSWORD }}
 
-      - name: Build Kernel ${{matrix.kernel}} (${{ matrix.arch }})
+      - name: Build and push Kernel ${{matrix.kernel}} (${{ matrix.arch }})
         id: build-kernel
-        run: |
-          bash build.sh build-kernel "${{ matrix.kernel }}"
+        env: 
+          DO_PUSH: "yes"
+        run: bash build.sh build-kernel "${{ matrix.kernel }}"
+
+  build-hooks:
+    needs: [ matrix_prep, build-linuxkit-containers, build-kernels ] # depend on the previous job...
+    runs-on: "ubuntu-latest" # @TODO: one day we might implement ${{ matrix.runner }} when we have arm64 runners. For now use amd64 GH runners & qemu; notice: qemu is only used to build hook-bootkit, hook-mdev, and hook-docker
+    strategy:
+      fail-fast: false # let other jobs try to complete if one fails
+      matrix:
+        include: ${{ fromJSON(needs.matrix_prep.outputs.kernels_json) }}
+    name: "${{ matrix.arch }}: (${{ matrix.kernel }})"
+    steps:
+      - name: Checkout build repo
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx # nb: no need for qemu here, kernels are cross-compiled, instead of the compilation being emulated
+        id: buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Docker Login to quay.io
+        uses: docker/login-action@v3
+        with:
+          registry: quay.io  # Use robot account!
+          username: ${{ secrets.QUAY_USERNAME }}
+          password: ${{ secrets.QUAY_PASSWORD }}
 
       - name: Build Hook with Kernel ${{matrix.kernel}} (${{ matrix.arch }})
         id: build-hook
-        run: |
-          bash build.sh build "${{ matrix.kernel }}"
+        env:
+          DO_BUILD_KERNEL: "no" # we already built the kernel; this is only for hook.
+        run: bash build.sh build "${{ matrix.kernel }}"
 
       - name: Show the produced artifacts
-        run: |
-          ls -lahtR out/
+        run: ls -lahtR out/
 
       - name: Upload deb as artifact ${{ matrix.arch.name }} ${{ matrix.distro }}
         uses: actions/upload-artifact@v4
@@ -84,7 +127,7 @@ jobs:
           path: out/*.tar.gz
 
   release:
-    needs: [ matrix_prep, build ] # depend on the previous jobs...
+    needs: [ matrix_prep, build-hooks ] # depend on the previous jobs...
     if: "${{ !cancelled() }}" # ... but run even if (some of) them failed, but not if job was cancelled
     runs-on: ubuntu-latest
     steps:
@@ -92,7 +135,7 @@ jobs:
       - uses: actions/download-artifact@v4
         name: Download hoook artifacts from all builds
         with:
-          name: "hook-tarball-*"
+          pattern: "hook-tarball-*"
           merge-multiple: true
           path: out
 

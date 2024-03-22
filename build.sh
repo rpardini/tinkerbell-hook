@@ -13,13 +13,13 @@ source kernel/bash/kernel_armbian.sh
 # each entry in this array needs a corresponding one in the kernel_data dictionary-of-stringified-dictionaries below
 declare -a kernels=(
 	# Hook's own kernel, in kernel/ directory
-## WAIT ##	"hook-default-arm64" # Hook default kernel, source code stored in `kernel` dir in this repo
-## WAIT ##	"hook-default-amd64" # Hook default kernel, source code stored in `kernel` dir in this repo
-## WAIT ##
-## WAIT ##	# External kernels, taken from Armbian's OCI repos. Those are "exotic" kernels for certain SoC's.
-## WAIT ##	"armbian-meson64-edge"    # Armbian meson64 (Amlogic) edge (release candidates or stable but rarely LTS) kernel
-## WAIT ##	"armbian-bcm2711-current" # Armbian bcm2711 (Broadcom) current (latest stable) kernel; for the RaspberryPi 3b+/4b/5
-## WAIT ##	"armbian-rockchip64-edge" # Armbian rockchip64 (Rockchip) edge (release candidates or stable but rarely LTS) kernel; NOT suitable for rk3588's, but yes for 3566/3568/3399
+	## WAIT ##	"hook-default-arm64" # Hook default kernel, source code stored in `kernel` dir in this repo
+	## WAIT ##	"hook-default-amd64" # Hook default kernel, source code stored in `kernel` dir in this repo
+	## WAIT ##
+	## WAIT ##	# External kernels, taken from Armbian's OCI repos. Those are "exotic" kernels for certain SoC's.
+	## WAIT ##	"armbian-meson64-edge"    # Armbian meson64 (Amlogic) edge (release candidates or stable but rarely LTS) kernel
+	## WAIT ##	"armbian-bcm2711-current" # Armbian bcm2711 (Broadcom) current (latest stable) kernel; for the RaspberryPi 3b+/4b/5
+	## WAIT ##	"armbian-rockchip64-edge" # Armbian rockchip64 (Rockchip) edge (release candidates or stable but rarely LTS) kernel; NOT suitable for rk3588's, but yes for 3566/3568/3399
 
 	# Non exotic, EFI capable (edk2 or such, not u-boot+EFI) machines might use those:
 	"armbian-uefi-arm64-edge" # Armbian generic edge UEFI kernel
@@ -45,6 +45,7 @@ declare -A kernel_data=(
 )
 
 declare -g HOOK_KERNEL_OCI_BASE="${HOOK_KERNEL_OCI_BASE:-"quay.io/tinkerbellrpardini/kernel-"}"
+declare -g HOOK_LK_CONTAINERS_OCI_BASE="${HOOK_LK_CONTAINERS_OCI_BASE:-"quay.io/tinkerbellrpardini/linuxkit-"}"
 
 # @TODO: only works on Debian/Ubuntu-like
 # Grab tooling needed: jq, from apt
@@ -65,21 +66,32 @@ case "${1:-"build"}" in
 			declare -A kernel_info
 			get_kernel_info_dict "${kernel}"
 
-			output_json+="{\"kernel\":\"${kernel}\",\"arch\":\"${kernel_info[ARCH]}\"}" # Possibly include a runs-on here if CI ever gets arm64 runners
-			[[ $counter -lt $((${#kernels[@]} - 1)) ]] && output_json+=","              # append a comma if not the last element
+			output_json+="{\"kernel\":\"${kernel}\",\"arch\":\"${kernel_info[ARCH]}\",\"docker_arch\":\"${kernel_info[DOCKER_ARCH]}\"}" # Possibly include a runs-on here if CI ever gets arm64 runners
+			[[ $counter -lt $((${#kernels[@]} - 1)) ]] && output_json+=","                                                              # append a comma if not the last element
 			counter+=1
 		done
 		output_json+="]"
 		full_json="$(echo "${output_json}" | jq -c .)" # Pass it through jq for correctness check & compaction
 
+		# let's reduce the output to get a JSON of all docker_arches. This is used for building the linuxkit containers.
+		declare arches_json=""
+		arches_json="$(echo -n "${full_json}" | jq -c 'map({docker_arch}) | unique')"
+
 		# If under GHA, set a GHA output variable
 		if [[ -z "${GITHUB_OUTPUT}" ]]; then
 			echo "Would have set GHA output kernels_json to: ${full_json}" >&2
+			echo "Would have set GHA output arches_json to: ${arches_json}" >&2
 		else
 			echo "kernels_json=${full_json}" >> "${GITHUB_OUTPUT}"
+			echo "arches_json=${arches_json}" >> "${GITHUB_OUTPUT}"
 		fi
 
 		echo -n "${full_json}" # to stdout, for cli/jq etc
+		;;
+
+	linuxkit-containers)
+		echo "Building all LinuxKit containers..." >&2
+		build_all_hook_linuxkit_containers
 		;;
 
 	kernel-config | config-kernel)
@@ -147,9 +159,7 @@ case "${1:-"build"}" in
 		fi
 
 		# Build the containers in this repo used in the LinuxKit YAML;
-		build_hook_linuxkit_container hook-bootkit HOOK_CONTAINER_BOOTKIT_IMAGE
-		build_hook_linuxkit_container hook-docker HOOK_CONTAINER_DOCKER_IMAGE
-		build_hook_linuxkit_container hook-mdev HOOK_CONTAINER_MDEV_IMAGE
+		build_all_hook_linuxkit_containers # sets HOOK_CONTAINER_BOOTKIT_IMAGE, HOOK_CONTAINER_DOCKER_IMAGE, HOOK_CONTAINER_MDEV_IMAGE
 
 		# Template the linuxkit configuration file.
 		# - You'd think linuxkit would take --build-args or something by now, but no.
