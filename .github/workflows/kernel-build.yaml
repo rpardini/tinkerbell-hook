@@ -11,6 +11,7 @@ jobs:
     name: "Prepare matrix JSON"
     runs-on: ubuntu-latest
     outputs:
+      created: ${{ steps.date_prep.outputs.created }} # refer to as ${{needs.prepare.outputs.created}}
       kernels_json: ${{ steps.prepare-matrix.outputs.kernels_json }}
     steps:
 
@@ -24,6 +25,11 @@ jobs:
           username: ${{ secrets.QUAY_USERNAME }}
           password: ${{ secrets.QUAY_PASSWORD }}
 
+      - name: Prepare release ID (current date)
+        id: date_prep
+        run: |
+          echo "created=$(date -u +'%Y%m%d-%H%M')" >> "${GITHUB_OUTPUT}"
+
       - name: Run the matrix JSON preparation bash script
         id: prepare-matrix
         run: bash build.sh gha-matrix # This sets the output "kernels_json" internally
@@ -31,7 +37,7 @@ jobs:
   
   build:
     needs: [ matrix_prep ] # depend on the previous job...
-    runs-on: "ubuntu-latest" # ${{ matrix.arch.runner }}
+    runs-on: "ubuntu-latest" # @TODO: one day we might implement ${{ matrix.runner }} when we have arm64 runners. For now use amd64 GH runners & qemu; notice: qemu is only used to build hook-bootkit, hook-mdev, and hook-docker
     strategy:
       fail-fast: false # let other jobs try to complete if one fails
       matrix:
@@ -67,11 +73,39 @@ jobs:
         run: |
           bash build.sh build "${{ matrix.kernel }}"
 
+      - name: Show the produced artifacts
+        run: |
+          ls -lahtR out/
+
+      - name: Upload deb as artifact ${{ matrix.arch.name }} ${{ matrix.distro }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: hook-tarballs
+          path: out/*.tar.gz
+
   release:
-    needs: [ build ] # depend on the previous jobs...
+    needs: [ matrix_prep, build ] # depend on the previous jobs...
     if: "${{ !cancelled() }}" # ... but run even if (some of) them failed, but not if job was cancelled
     runs-on: ubuntu-latest
     steps:
-      - name: List current dir
+      # Download the built artifacts from GH artifacts.  
+      - uses: actions/download-artifact@v3
+        name: Download hoook artifacts
+        with:
+          name: hook-tarballs
+          path: out
+
+      - name: List artifacts downloaded
         run: |
           ls -lahtR
+
+      # Release the artifacts into GitHub Releases
+      - name: "GH Release"
+        uses: "marvinpinto/action-automatic-releases@latest"
+        with:
+          repo_token: "${{ secrets.GITHUB_TOKEN }}"
+          automatic_release_tag: "${{needs.matrix_prep.outputs.created}}"
+          prerelease: false
+          title: "${{needs.matrix_prep.outputs.created}}"
+          files: |
+            out/*.tar.gz
