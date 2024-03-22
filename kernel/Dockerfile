@@ -1,4 +1,4 @@
-FROM debian:stable as kernel-source-unpacked
+FROM debian:stable  as kernel-source-unpacked
 ENV DEBIAN_FRONTEND=noninteractive
 
 # crossbuild-essentials are pretty heavy; here we install for both architecures to maximize Docker layer hit cache rate during development, but only one will be used

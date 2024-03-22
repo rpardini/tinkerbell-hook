@@ -1,4 +1,4 @@
-FROM golang:1.20-alpine as dev
+FROM golang:1.20-alpine  as dev
 COPY . /src/
 WORKDIR /src
 RUN CGO_ENABLED=0 go build -a -ldflags '-w -extldflags "-static"' -o /hook-docker

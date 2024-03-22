@@ -1,4 +1,4 @@
-FROM golang:1.20-alpine as dev
+FROM golang:1.20-alpine  as dev
 COPY . /src/
 WORKDIR /src
 RUN go mod download
