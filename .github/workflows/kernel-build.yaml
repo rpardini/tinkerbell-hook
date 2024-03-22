@@ -119,6 +119,7 @@ jobs:
           path: out/*.tar.gz
 
   release:
+    name: Publish all Hooks to GitHub Releases
     needs: [ matrix_prep, build-hook-ensemble ]
     runs-on: ubuntu-latest
     steps:
