@@ -66,7 +66,7 @@ jobs:
       fail-fast: false # let other jobs try to complete if one fails, kernels might take long, and they'd be skipped on the next run
       matrix:
         include: ${{ fromJSON(needs.matrix_prep.outputs.kernels_json) }}
-    name: "${{ matrix.arch }}: (${{ matrix.kernel }})"
+    name: "Kernel:${{ matrix.kernel }} (${{ matrix.arch }})"
     steps:
       - name: Checkout build repo
         uses: actions/checkout@v4
@@ -84,7 +84,7 @@ jobs:
 
       - name: Build and push Kernel ${{matrix.kernel}} (${{ matrix.arch }})
         id: build-kernel
-        env: 
+        env:
           DO_PUSH: "yes"
         run: bash build.sh build-kernel "${{ matrix.kernel }}"
 
@@ -95,7 +95,7 @@ jobs:
       fail-fast: false # let other jobs try to complete if one fails
       matrix:
         include: ${{ fromJSON(needs.matrix_prep.outputs.kernels_json) }}
-    name: "${{ matrix.arch }}: (${{ matrix.kernel }})"
+    name: "Hook: ${{ matrix.kernel }} (${{ matrix.arch }})"
     steps:
       - name: Checkout build repo
         uses: actions/checkout@v4
@@ -114,11 +114,9 @@ jobs:
       - name: Build Hook with Kernel ${{matrix.kernel}} (${{ matrix.arch }})
         id: build-hook
         env:
-          DO_BUILD_KERNEL: "no" # we already built the kernel; this is only for hook.
+          DO_BUILD_KERNEL: "no" # we already built the kernel; this is only for hook/linuxkit.
+          DO_BUILD_LK_CONTAINERS: "no" # already built them; this is only for hook/linuxkit.
         run: bash build.sh build "${{ matrix.kernel }}"
-
-      - name: Show the produced artifacts
-        run: ls -lahtR out/
 
       - name: Upload deb as artifact ${{ matrix.arch.name }} ${{ matrix.distro }}
         uses: actions/upload-artifact@v4
@@ -138,10 +136,6 @@ jobs:
           pattern: "hook-tarball-*"
           merge-multiple: true
           path: out
-
-      - name: List artifacts downloaded
-        run: |
-          ls -lahtR
 
       # Release the artifacts into GitHub Releases
       - name: "GH Release"

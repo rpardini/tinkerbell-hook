@@ -121,14 +121,22 @@ case "${1:-"build"}" in
 		echo "Kernel calculate version method: ${kernel_info[VERSION_FUNC]}" >&2
 		"${kernel_info[VERSION_FUNC]}"
 
-		# @TODO: once we've the version, we can determine if it is already available in the OCI registry; if so, just pull and skip building/pushing
+		# determine if it is already available in the OCI registry; if so, just pull and skip building/pushing
+		if docker pull "${kernel_oci_image}"; then
+			echo "Kernel image ${kernel_oci_image} already in registry; skipping build" >&2
+			exit 0
+		fi
 
 		echo "Kernel build method: ${kernel_info[BUILD_FUNC]}" >&2
 		"${kernel_info[BUILD_FUNC]}"
 
 		# Push it to the OCI registry
-		echo "Kernel built; pushing to ${kernel_oci_image}" >&2
-		docker push "${kernel_oci_image}" || true
+		if [[ "${DO_PUSH:-"no"}" == "yes" ]]; then
+			echo "Kernel built; pushing to ${kernel_oci_image}" >&2
+			docker push "${kernel_oci_image}" || true
+		else
+			echo "DO_PUSH not 'yes', not pushing." >&2
+		fi
 
 		;;
 
