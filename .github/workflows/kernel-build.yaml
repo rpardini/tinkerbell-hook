@@ -30,6 +30,7 @@ jobs:
   
   
   build:
+    needs: [ matrix_prep ] # depend on the previous job...
     runs-on: "ubuntu-latest" # ${{ matrix.arch.runner }}
     strategy:
       fail-fast: false # let other jobs try to complete if one fails
