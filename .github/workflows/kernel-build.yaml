@@ -1,4 +1,4 @@
-name: matrix
+name: All Kernels and Hook variations
 on:
   #schedule:
   #  # every day at 5am UTC
