@@ -1,5 +1,16 @@
 #!/usr/bin/env bash
 
+# logger utility, output ANSI-colored messages to stderr; first argument is level (debug/info/warn/error), all other arguments are the message.
+declare -A log_colors=(["debug"]="0;36" ["info"]="0;32" ["warn"]="0;33" ["error"]="0;31")
+declare -A log_emoji=(["debug"]="🐛" ["info"]="📗" ["warn"]="🚧" ["error"]="🚨")
+function log() {
+	declare level="${1}"
+	shift
+	declare color="${log_colors[${level}]}"
+	declare emoji="${log_emoji[${level}]}"
+	echo -e "${emoji} \033[${color}m${SECONDS}: [${level}] $*\033[0m" >&2
+}
+
 function output_gha_matrixes() {
 	# This is a GitHub Actions matrix build, so we need to produce a JSON array of objects, one for each kernel. Doing this in bash is painful.
 	declare output_json="[" full_json=""
@@ -21,8 +32,8 @@ function output_gha_matrixes() {
 
 	# If under GHA, set a GHA output variable
 	if [[ -z "${GITHUB_OUTPUT}" ]]; then
-		echo "Would have set GHA output kernels_json to: ${full_json}" >&2
-		echo "Would have set GHA output arches_json to: ${arches_json}" >&2
+		log debug "Would have set GHA output kernels_json to: ${full_json}"
+		log debug "Would have set GHA output arches_json to: ${arches_json}"
 	else
 		echo "kernels_json=${full_json}" >> "${GITHUB_OUTPUT}"
 		echo "arches_json=${arches_json}" >> "${GITHUB_OUTPUT}"

@@ -9,7 +9,7 @@ function obtain_linuxkit_binary_cached() {
 	case "$(uname -m)" in
 		"x86_64") linuxkit_arch="amd64" ;;
 		"aarch64") linuxkit_arch="arm64" ;;
-		*) echo "ERROR: ARCH $(uname -m) not supported by linuxkit? check https://github.com/linuxkit/linuxkit/releases" >&2 && exit 1 ;;
+		*) log error "ERROR: ARCH $(uname -m) not supported by linuxkit? check https://github.com/linuxkit/linuxkit/releases" && exit 1 ;;
 	esac
 
 	declare linuxkit_down_url="https://github.com/linuxkit/linuxkit/releases/download/v${linuxkit_version}/linuxkit-linux-${linuxkit_arch}"
@@ -17,13 +17,13 @@ function obtain_linuxkit_binary_cached() {
 
 	# Download using curl if not already present
 	if [[ ! -f "${linuxkit_bin}" ]]; then
-		echo "Downloading linuxkit from ${linuxkit_down_url} to file ${linuxkit_bin}" >&2
+		log info "Downloading linuxkit from ${linuxkit_down_url} to file ${linuxkit_bin}"
 		curl -sL "${linuxkit_down_url}" -o "${linuxkit_bin}"
 		chmod +x "${linuxkit_bin}"
 	fi
 
 	# Show the binary's version
-	echo "LinuxKit binary version: ('0.8+' reported for 1.2.0, bug?): $("${linuxkit_bin}" version | xargs echo -n)" >&2
+	log info "LinuxKit binary version: ('0.8+' reported for 1.2.0, bug?): $("${linuxkit_bin}" version | xargs echo -n)"
 
 }
 
@@ -33,22 +33,22 @@ function linuxkit_build() {
 	get_kernel_info_dict "${kernel_id}"
 	set_kernel_vars_from_info_dict
 
-	echo "Kernel calculate version method: ${kernel_info[VERSION_FUNC]}" >&2
+	log debug "Kernel calculate version method: ${kernel_info[VERSION_FUNC]}"
 	"${kernel_info[VERSION_FUNC]}"
 
 	# Ensure OUTPUT_ID is set
 	if [[ "${OUTPUT_ID}" == "" ]]; then
-		echo "ERROR: \${OUTPUT_ID} is not set after ${kernel_info[VERSION_FUNC]}" >&2
+		log error "\${OUTPUT_ID} is not set after ${kernel_info[VERSION_FUNC]}"
 		exit 1
 	fi
 
 	# If the image is in the local docker cache, skip building
 	if [[ -n "$(docker images -q "${kernel_oci_image}")" ]]; then
-		echo "Kernel image ${kernel_oci_image} already in local cache; trying a pull to update, but tolerate failures..." >&2
-		docker pull "${kernel_oci_image}" || echo "Pull failed, using local image ${kernel_oci_image}" >&2
+		log info "Kernel image ${kernel_oci_image} already in local cache; trying a pull to update, but tolerate failures..."
+		docker pull "${kernel_oci_image}" || log warn "Pull failed, using local image ${kernel_oci_image}"
 	else
 		# Pull the kernel from the OCI registry
-		echo "Pulling kernel from ${kernel_oci_image}" >&2
+		log info "Pulling kernel from ${kernel_oci_image}"
 		docker pull "${kernel_oci_image}"
 		# @TODO: if pull fails, build like build-kernel would.
 	fi
@@ -85,7 +85,7 @@ function linuxkit_build() {
 		"hook.${kernel_id}.yaml" # the linuxkit configuration file
 	)
 
-	echo "Building Hook with kernel ${kernel_id} using linuxkit: ${lk_args[*]}" >&2
+	log info "Building Hook with kernel ${kernel_id} using linuxkit: ${lk_args[*]}"
 	"${linuxkit_bin}" build "${lk_args[@]}"
 
 	# @TODO: allow a "run" stage here.
@@ -116,13 +116,13 @@ function linuxkit_build() {
 	# Get a count of .dtb files in the extracted dir
 	declare -i dtb_count
 	dtb_count=$(find "${dtbs_tmp_dir}" -type f -name "*.dtb" | wc -l)
-	echo "Kernel includes ${dtb_count} DTB files..." >&2
+	log info "Kernel includes ${dtb_count} DTB files..."
 	# If more than zero, let's tar them up adding a prefix
 	if [[ $dtb_count -gt 0 ]]; then
 		tar -czf "out/hook/dtbs-${OUTPUT_ID}.tar.gz" -C "${dtbs_tmp_dir}" --transform "s,^,dtbs-${OUTPUT_ID}/," .
 		output_files+=("dtbs-${OUTPUT_ID}.tar.gz")
 	else
-		echo "No DTB files found in kernel image." >&2
+		log info "No DTB files found in kernel image."
 	fi
 	rm -rf "${dtbs_tmp_dir}"
 	rm "${lk_output_dir}/dtbs-${OUTPUT_ID}.tar.gz"

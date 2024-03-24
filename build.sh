@@ -57,6 +57,7 @@ declare -g SKOPEO_IMAGE="${SKOPEO_IMAGE:-"quay.io/skopeo/stable:latest"}"
 install_dependencies
 
 declare -r -g kernel_id="${2:-"hook-default-amd64"}"
+log info "Selected kernel: '${kernel_id}'"
 
 case "${1:-"build"}" in
 	gha-matrix)
@@ -80,11 +81,11 @@ case "${1:-"build"}" in
 		;;
 
 	*)
-		echo "Unknown command: ${1}; try build / kernel-build / kernel-config / linuxkit-containers / gha-matrix" >&2
+		log error "Unknown command: ${1}; try build / kernel-build / kernel-config / linuxkit-containers / gha-matrix"
 		exit 1
 		;;
 
 esac
 
-echo "Success." >&2
+log info "Success."
 exit 0
