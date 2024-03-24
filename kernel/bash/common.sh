@@ -1,6 +1,49 @@
 #!/usr/bin/env bash
 
-set -e
+function kernel_build() {
+	declare -A kernel_info
+	declare kernel_oci_version="" kernel_oci_image=""
+	get_kernel_info_dict "${kernel_id}"
+	set_kernel_vars_from_info_dict
+
+	echo "Kernel calculate version method: ${kernel_info[VERSION_FUNC]}" >&2
+	"${kernel_info[VERSION_FUNC]}"
+
+	# determine if it is already available in the OCI registry; if so, just pull and skip building/pushing
+	if docker pull "${kernel_oci_image}"; then
+		echo "Kernel image ${kernel_oci_image} already in registry; skipping build" >&2
+		exit 0
+	fi
+
+	echo "Kernel build method: ${kernel_info[BUILD_FUNC]}" >&2
+	"${kernel_info[BUILD_FUNC]}"
+
+	# Push it to the OCI registry
+	if [[ "${DO_PUSH:-"no"}" == "yes" ]]; then
+		echo "Kernel built; pushing to ${kernel_oci_image}" >&2
+		docker push "${kernel_oci_image}" || true
+	else
+		echo "DO_PUSH not 'yes', not pushing." >&2
+	fi
+}
+
+function kernel_configure_interactive() {
+	# bail if not interactive (stdin is a terminal)
+	[[ ! -t 0 ]] && echo "not interactive, can't configure" >&2 && exit 1
+
+	echo "Would configure a kernel" >&2
+
+	declare -A kernel_info
+	declare kernel_oci_version="" kernel_oci_image=""
+	get_kernel_info_dict "${kernel_id}"
+	set_kernel_vars_from_info_dict
+
+	echo "Kernel calculate version method: ${kernel_info[VERSION_FUNC]}" >&2
+	"${kernel_info[VERSION_FUNC]}"
+
+	echo "Kernel config method: ${kernel_info[CONFIG_FUNC]}" >&2
+	"${kernel_info[CONFIG_FUNC]}"
+}
 
 function resolve_latest_kernel_version_lts() { # Produces KERNEL_POINT_RELEASE
 	if [[ ! -f kernel-releases.json ]]; then

@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
 function build_all_hook_linuxkit_containers() {
+	echo "Building all LinuxKit containers..." >&2
 	: "${DOCKER_ARCH:?"ERROR: DOCKER_ARCH is not defined"}"
 
 	build_hook_linuxkit_container hook-bootkit HOOK_CONTAINER_BOOTKIT_IMAGE
