@@ -54,6 +54,10 @@ declare -g HOOK_LK_CONTAINERS_OCI_BASE="${HOOK_LK_CONTAINERS_OCI_BASE:-"ghcr.io/
 
 declare -g SKOPEO_IMAGE="${SKOPEO_IMAGE:-"quay.io/skopeo/stable:latest"}"
 
+# See https://github.com/linuxkit/linuxkit/releases
+#declare -g -r LINUXKIT_VERSION="${LINUXKIT_VERSION:-"1.0.1"}"
+declare -g -r LINUXKIT_VERSION="${LINUXKIT_VERSION:-"1.2.0"}"
+
 install_dependencies
 
 declare -r -g kernel_id="${2:-"hook-default-amd64"}"
