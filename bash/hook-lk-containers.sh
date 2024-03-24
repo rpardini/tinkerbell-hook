@@ -35,11 +35,15 @@ function build_hook_linuxkit_container() {
 
 	echo "Built ${container_oci_ref} from ${container_dir} for platform ${DOCKER_ARCH}" >&2
 
-	# Push the image to the registry
-	docker push "${container_oci_ref}" || {
-		echo "Failed to push ${container_oci_ref} to registry" >&2
-		exit 33
-	}
+	# Push the image to the registry, if DO_PUSH is set to yes
+	if [[ "${DO_PUSH}" == "yes" ]]; then
+		docker push "${container_oci_ref}" || {
+			echo "Failed to push ${container_oci_ref} to registry" >&2
+			exit 33
+		}
+	else
+		echo "Skipping push of ${container_oci_ref} to registry; set DO_PUSH=yes to push." >&2
+	fi
 
 	return 0
 }
