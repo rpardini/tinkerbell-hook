@@ -88,7 +88,22 @@ function linuxkit_build() {
 	log info "Building Hook with kernel ${kernel_id} using linuxkit: ${lk_args[*]}"
 	"${linuxkit_bin}" build "${lk_args[@]}"
 
-	# @TODO: allow a "run" stage here.
+	if [[ "${LK_RUN}" == "qemu" ]]; then
+		# apt install qemu-system-x86 if no /usr/bin/qemu-system-x86_64
+		
+		
+		declare -a lk_run_args=(
+			"run" "qemu"
+			"--arch" "${kernel_info['ARCH']}" # Not DOCKER_ARCH
+			"--kernel"
+			"${lk_output_dir}/hook"
+		)
+		log info "Running LinuxKit in QEMU with '${lk_run_args[*]}'"
+
+		"${linuxkit_bin}" "${lk_run_args[@]}"
+
+		return 0
+	fi
 
 	# rename outputs
 	mv -v "${lk_output_dir}/hook-kernel" "${lk_output_dir}/vmlinuz-${OUTPUT_ID}"

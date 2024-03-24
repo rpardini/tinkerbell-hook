@@ -77,11 +77,16 @@ case "${1:-"build"}" in
 		;;
 
 	build | linuxkit) # Build Hook proper, using the specified kernel
+		unset LK_RUN     # make sure this is unset
 		linuxkit_build
 		;;
 
+	run-qemu)
+		LK_RUN="qemu" linuxkit_build
+		;;
+
 	*)
-		log error "Unknown command: ${1}; try build / kernel-build / kernel-config / linuxkit-containers / gha-matrix"
+		log error "Unknown command: ${1}; try build / run-qemu / kernel-build / kernel-config / linuxkit-containers / gha-matrix"
 		exit 1
 		;;
 
