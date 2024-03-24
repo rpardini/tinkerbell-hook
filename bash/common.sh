@@ -31,12 +31,12 @@ function output_gha_matrixes() {
 	echo -n "${full_json}" # to stdout, for cli/jq etc
 }
 
-
 function install_dependencies() {
 	# @TODO: only works on Debian/Ubuntu-like
-    # Grab tooling needed: jq, from apt
-    [[ ! -f /usr/bin/jq ]] && apt update && apt install -y jq
-    # Grab tooling needed: envsubst, from gettext
-    [[ ! -f /usr/bin/envsubst ]] && apt update && apt install -y gettext-base
+	# Grab tooling needed: jq, from apt
+	[[ ! -f /usr/bin/jq ]] && apt update && apt install -y jq
+	# Grab tooling needed: envsubst, from gettext
+	[[ ! -f /usr/bin/envsubst ]] && apt update && apt install -y gettext-base
 
+	return 0 # there's a shortcircuit above
 }
