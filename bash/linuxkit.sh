@@ -12,7 +12,7 @@ function obtain_linuxkit_binary_cached() {
 	esac
 
 	declare linuxkit_down_url="https://github.com/linuxkit/linuxkit/releases/download/v${LINUXKIT_VERSION}/linuxkit-linux-${linuxkit_arch}"
-	declare -g -r linuxkit_bin="./linuxkit-linux-${linuxkit_arch}-${LINUXKIT_VERSION}"
+	declare -g linuxkit_bin="./linuxkit-linux-${linuxkit_arch}-${LINUXKIT_VERSION}"
 
 	# Download using curl if not already present
 	if [[ ! -f "${linuxkit_bin}" ]]; then
@@ -88,19 +88,7 @@ function linuxkit_build() {
 	"${linuxkit_bin}" build "${lk_args[@]}"
 
 	if [[ "${LK_RUN}" == "qemu" ]]; then
-		# apt install qemu-system-x86 if no /usr/bin/qemu-system-x86_64
-		
-		
-		declare -a lk_run_args=(
-			"run" "qemu"
-			"--arch" "${kernel_info['ARCH']}" # Not DOCKER_ARCH
-			"--kernel"
-			"${lk_output_dir}/hook"
-		)
-		log info "Running LinuxKit in QEMU with '${lk_run_args[*]}'"
-
-		"${linuxkit_bin}" "${lk_run_args[@]}"
-
+		linuxkit_run_qemu
 		return 0
 	fi
 
@@ -146,4 +134,53 @@ function linuxkit_build() {
 	# tar the files into out/hook.tar in such a way that vmlinuz and initramfs are at the root of the tar; pigz it
 	# Those are the artifacts published to the GitHub release
 	tar -cvf- -C "out/hook" "${output_files[@]}" | pigz > "out/hook-${OUTPUT_ID}.tar.gz"
+}
+
+function linuxkit_run_qemu() {
+	declare lk_output_dir="out/linuxkit-${kernel_id}"
+	# Todo this is common everywhere, just do it in build.sh
+	declare -A kernel_info
+	declare kernel_oci_version="" kernel_oci_image=""
+	get_kernel_info_dict "${kernel_id}"
+	set_kernel_vars_from_info_dict
+
+	declare -g linuxkit_bin=""
+	obtain_linuxkit_binary_cached # sets "${linuxkit_bin}"
+
+	# apt install qemu-system-x86 if no /usr/bin/qemu-system-x86_64
+	# apt install ovmf if no /usr/share/OVMF/OVMF_CODE.fd
+
+	# --fw string              Path to OVMF firmware for UEFI boot
+
+	declare -a lk_run_args=(
+		"run" "qemu"
+		"--arch" "${kernel_info['ARCH']}" # Not DOCKER_ARCH
+		"--kernel"                        # Boot image is kernel+initrd+cmdline 'path'-kernel/-initrd/-cmdline
+		"--uefi"                          # Use UEFI boot
+		"--cpus" "2"                      # Use 2 CPU's
+		"--mem" "2048"                    # Use 2GB of RAM
+	)
+
+	# x86, debian
+	lk_run_args+=("--fw" "/usr/share/OVMF/OVMF_CODE.fd")
+
+	# only if we know of a tink-server instance and a MAC address
+	declare -a lk_run_kernel_cmdline=(
+		"tink_worker_image=quay.io/tinkerbell/tink-worker:latest"
+		"tinkerbell_tls=false"
+		"grpc_authority=192.168.66.75:42113"
+		"syslog_host=192.168.66.75"
+		"worker_id=52:54:00:01:03:02"
+		"hw_addr=52:54:00:01:03:02"
+	)
+	lk_run_kernel_cmdline+=("console=ttyS0")
+
+	echo -n "${lk_run_kernel_cmdline[*]}" > "${lk_output_dir}/hook-cmdline"
+
+	lk_run_args+=("${lk_output_dir}/hook") # Path to run; will add -kernel, -initrd, -cmdline
+
+	log info "Running LinuxKit in QEMU with '${lk_run_args[*]}'"
+	log info "Running LinuxKit in QEMU with kernel cmdline'${lk_run_kernel_cmdline[*]}'"
+
+	"${linuxkit_bin}" "${lk_run_args[@]}"
 }
