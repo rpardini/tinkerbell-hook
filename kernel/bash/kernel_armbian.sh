@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
-declare -g ARMBIAN_BASE_ORAS_REF="${ARMBIAN_BASE_ORAS_REF:-"ghcr.io/armbian/os"}"
+#declare -g ARMBIAN_BASE_ORAS_REF="${ARMBIAN_BASE_ORAS_REF:-"ghcr.io/armbian/os"}"
+declare -g ARMBIAN_BASE_ORAS_REF="${ARMBIAN_BASE_ORAS_REF:-"ghcr.io/armsurvivors/armbian-release"}"
 
 function calculate_kernel_version_armbian() {
 	: "${kernel_id:?"ERROR: kernel_id is not defined"}"
