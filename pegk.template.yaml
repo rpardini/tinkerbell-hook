@@ -1,7 +1,7 @@
-# a 'peg' is not a 'hook'
+# a 'peg' is not a 'hook', but pegz uses hook's default kernel
 kernel:
-  image: linuxkit/kernel:6.6.13
-  cmdline: does_not_matter_here=yes
+  image: "${HOOK_KERNEL_IMAGE}"
+  cmdline: irrelevant=here
   #ucode: intel-ucode.cpio
 init:
   - linuxkit/init:45a1ad5919f0b6acf0f0cf730e9434abfae11fe6
