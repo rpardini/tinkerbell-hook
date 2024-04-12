@@ -83,5 +83,19 @@ function add_vlan_interface() {
 
 # we always return true so that a failure here doesn't block the next container service from starting. Ideally, we always
 # want the getty service to start so we can debug failures.
-set -x # debugging # @TODO disable?
 add_vlan_interface || true
+echo "Done with VLAN handling." >&2
+
+# @TODO: debugging since I seem to have machines hanging here; dump some info
+echo "Start debugging..." >&2
+set -x # debugging # @TODO disable?
+cat /proc/cmdline || true
+ip link show || true
+ip addr show || true
+ip route show || true
+ps aux || true
+ps -elf || true
+dmesg || true
+dmesg --color=always || true
+echo "End debugging..." >&2
+exit 0
