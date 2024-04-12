@@ -69,7 +69,6 @@ jobs:
   build-kernels:
     needs: [ matrix_prep ] # depend on the previous job...
     runs-on: "ubuntu-latest" # @TODO: one day we might implement ${{ matrix.runner }} when we have arm64 runners. For now use amd64 GH runners & qemu; notice: qemu is only used to build hook-bootkit, hook-mdev, and hook-docker
-    if: "${{ matrix.build_kernel }}" # some flavors use another flavor's kernel, so skip those.
     strategy:
       fail-fast: false # let other jobs try to complete if one fails, kernels might take long, and they'd be skipped on the next run
       matrix:
@@ -77,9 +76,11 @@ jobs:
     name: "Kernel ${{ matrix.kernel }}"
     steps:
       - name: Checkout build repo
+        if: "${{ matrix.build_kernel }}" # some flavors use another flavor's kernel, so skip those.
         uses: actions/checkout@v4
 
       - name: Set up Docker Buildx # nb: no need for qemu here, kernels are cross-compiled, instead of the compilation being emulated
+        if: "${{ matrix.build_kernel }}" # some flavors use another flavor's kernel, so skip those.
         uses: docker/setup-buildx-action@v3
 
       - name: Docker Login to quay.io
@@ -93,6 +94,7 @@ jobs:
         with: { registry: "ghcr.io", username: "${{ github.repository_owner }}", password: "${{ secrets.GITHUB_TOKEN }}" }
 
       - name: Build and push Kernel ${{matrix.kernel}} (${{ matrix.arch }})
+        if: "${{ matrix.build_kernel }}" # some flavors use another flavor's kernel, so skip those.
         env:
           DO_PUSH: "yes"
         run: bash build.sh build-kernel "${{ matrix.kernel }}"
