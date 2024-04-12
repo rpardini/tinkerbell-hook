@@ -19,8 +19,14 @@ function output_gha_matrixes() {
 		declare -A kernel_info
 		get_kernel_info_dict "${kernel}"
 
-		output_json+="{\"kernel\":\"${kernel}\",\"arch\":\"${kernel_info[ARCH]}\",\"docker_arch\":\"${kernel_info[DOCKER_ARCH]}\"}" # Possibly include a runs-on here if CI ever gets arm64 runners
-		[[ $counter -lt $((${#kernels[@]} - 1)) ]] && output_json+=","                                                              # append a comma if not the last element
+		declare build_kernel="true" # by default, tell gha to build the kernel.
+		if [[ "${kernel_info['USE_KERNEL_ID']}" != "" ]]; then
+			log warn "Kernel ${kernel} has USE_KERNEL_ID set ('${kernel_info['USE_KERNEL_ID']}'); GHA should not build kernel for this flavor."
+			build_kernel="false" # if USE_KERNEL_ID is set, don't build the kernel; it will have been built by some other flavor
+		fi
+
+		output_json+="{\"kernel\":\"${kernel}\",\"arch\":\"${kernel_info[ARCH]}\",\"docker_arch\":\"${kernel_info[DOCKER_ARCH]}\",\"build_kernel\":${build_kernel}}" # Possibly include a runs-on here if CI ever gets arm64 runners
+		[[ $counter -lt $((${#kernels[@]} - 1)) ]] && output_json+=","                                                                                          # append a comma if not the last element
 		counter+=1
 	done
 	output_json+="]"

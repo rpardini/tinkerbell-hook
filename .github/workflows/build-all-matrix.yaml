@@ -69,6 +69,7 @@ jobs:
   build-kernels:
     needs: [ matrix_prep ] # depend on the previous job...
     runs-on: "ubuntu-latest" # @TODO: one day we might implement ${{ matrix.runner }} when we have arm64 runners. For now use amd64 GH runners & qemu; notice: qemu is only used to build hook-bootkit, hook-mdev, and hook-docker
+    if: ${{ matrix.build_kernel }} # some flavors use another flavor's kernel, so skip those.
     strategy:
       fail-fast: false # let other jobs try to complete if one fails, kernels might take long, and they'd be skipped on the next run
       matrix:
