@@ -72,8 +72,6 @@ declare -g HOOK_LK_CONTAINERS_OCI_BASE="${HOOK_LK_CONTAINERS_OCI_BASE:-"quay.io/
 declare -g SKOPEO_IMAGE="${SKOPEO_IMAGE:-"quay.io/skopeo/stable:latest"}"
 
 # See https://github.com/linuxkit/linuxkit/releases
-declare -g -r LINUXKIT_VERSION="${LINUXKIT_VERSION:-"1.0.1"}"
-#declare -g -r LINUXKIT_VERSION="${LINUXKIT_VERSION:-"1.2.0"}" # @TODO still need this, still failing at containerd vs dind +more
 
 install_dependencies
 
