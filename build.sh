@@ -17,6 +17,7 @@ declare -a kernels=(
 	# Hook's own kernel, in kernel/ directory
 	"hook-default-arm64" # Hook default kernel, source code stored in `kernel` dir in this repo -- currently v5.10.213
 	"hook-default-amd64" # Hook default kernel, source code stored in `kernel` dir in this repo -- currently v5.10.213
+	"peg-default-amd64"  # Hook default kernel, source code stored in `kernel` dir in this repo -- currently v5.10.213
 
 	# External kernels, taken from Armbian's OCI repos. Those are "exotic" kernels for certain SoC's.
 	# edge = (release candidates or stable but rarely LTS, more aggressive patching)
@@ -39,6 +40,7 @@ declare -A kernel_data=(
 
 	["hook-default-arm64"]="['METHOD']='default' ['ARCH']='aarch64' ['KERNEL_MAJOR']='5' ['KERNEL_MINOR']='10' ['KCONFIG']='generic' "
 	["hook-default-amd64"]="['METHOD']='default' ['ARCH']='x86_64' ['KERNEL_MAJOR']='5' ['KERNEL_MINOR']='10' ['KCONFIG']='generic' "
+	["peg-default-amd64"]="['METHOD']='default' ['ARCH']='x86_64' ['KERNEL_MAJOR']='5' ['KERNEL_MINOR']='10' ['KCONFIG']='generic' ['USE_KERNEL_ID']='hook-default-amd64' ['TEMPLATE']='peg' ['LINUXKIT_VERSION']='1.2.0' "
 
 	# Armbian mainline kernels, check https://github.com/orgs/armbian/packages?tab=packages&q=kernel- for possibilities
 	# nb: when no ARMBIAN_KERNEL_VERSION, will use the first tag returned, high traffic, low cache rate.
