@@ -8,6 +8,8 @@ function calculate_kernel_version_armbian() {
 	log info "Calculating version of Armbian kernel..."
 
 	declare -g ARMBIAN_KERNEL_BASE_ORAS_REF="${ARMBIAN_BASE_ORAS_REF}/${ARMBIAN_KERNEL_ARTIFACT}"
+	declare -g ARMBIAN_FIRMWARE_BASE_ORAS_REF="${ARMBIAN_BASE_ORAS_REF}/armbian-firmware-full"
+	declare -g ARMBIAN_FIRMWARE_VERSION="1-SA6c15-SM5343-B90f5-R448a" # @TODO auto-update?
 
 	# If ARMBIAN_KERNEL_VERSION is unset, for using the latest kernel, this requires skopeo & jq
 	if [[ -z "${ARMBIAN_KERNEL_VERSION}" ]]; then
@@ -43,6 +45,9 @@ function calculate_kernel_version_armbian() {
 	declare -g ARMBIAN_KERNEL_MAJOR_MINOR_POINT="$(echo -n "${ARMBIAN_KERNEL_VERSION}" | cut -d "-" -f 1)"
 	log info "ARMBIAN_KERNEL_MAJOR_MINOR_POINT: ${ARMBIAN_KERNEL_MAJOR_MINOR_POINT}"
 
+	# Firmware
+	declare -g ARMBIAN_FIRMWARE_FULL_ORAS_REF_DEB_TAR="${ARMBIAN_FIRMWARE_BASE_ORAS_REF}:${ARMBIAN_FIRMWARE_VERSION}"
+
 	declare -g ARMBIAN_KERNEL_DOCKERFILE="kernel/Dockerfile.autogen.armbian.${kernel_id}"
 
 	declare oras_version="1.2.0-beta.1" # @TODO bump this once it's released; yes it's much better than 1.1.x's
@@ -53,7 +58,7 @@ function calculate_kernel_version_armbian() {
 	cat <<- ARMBIAN_ORAS_DOCKERFILE > "${ARMBIAN_KERNEL_DOCKERFILE}"
 		FROM debian:stable as downloader
 		# Install ORAS binary tool from GitHub releases
-		RUN apt update && apt install -y curl dpkg-dev && \
+		RUN apt update && apt install -y curl dpkg-dev tree && \
 		      curl -L -o /oras.tar.gz ${oras_down_url} && \
 		      tar -xvf /oras.tar.gz -C /usr/local/bin/ oras && \
 		      chmod +x /usr/local/bin/oras && \
@@ -63,6 +68,9 @@ function calculate_kernel_version_armbian() {
 
 		# lets create the output dir
 		WORKDIR /armbian/output
+
+		#######################################################################################
+		# Get the Armbian kernel via ORAS...
 		RUN echo getting kernel from ${ARMBIAN_KERNEL_FULL_ORAS_REF_DEB_TAR}
 
 		WORKDIR /armbian
@@ -74,23 +82,46 @@ function calculate_kernel_version_armbian() {
 		RUN tar -xvf *.tar
 		WORKDIR /armbian/global
 
-		# ... extract the contents of the .deb packages linuxq-image-* ...
+		# ... extract the contents of the .deb packages linux-image-* ...
 		RUN dpkg-deb --extract linux-image-*.deb /armbian/image
 
+		#######################################################################################
+		# Get the Armbian firmware via ORAS...
+		RUN echo getting firmware from ${ARMBIAN_FIRMWARE_FULL_ORAS_REF_DEB_TAR}
+
+		WORKDIR /armbian/firmware
+
+		# Pull the image from oras. This will contain a .deb file directly.
+		RUN oras pull "${ARMBIAN_FIRMWARE_FULL_ORAS_REF_DEB_TAR}"
+
+		# ... extract the contents of the .deb packages linux-image-* ...
+		RUN ls -laR
+		RUN dpkg-deb --extract armbian-firmware-*.deb /armbian/image
+
 		WORKDIR /armbian/image
+		RUN tree -d
+		RUN du -h -d 3 -x .
+
+		# Clean up some firmware -- otherwise it's just too big for an initrd
+		RUN rm -rf lib/firmware/mellanox lib/firmware/qcom lib/firmware/netronome lib/firmware/mrvl lib/firmware/amdgpu lib/firmware/nvidia lib/firmware/mediatek lib/firmware/qed lib/firmware/radeon lib/firmware/amlogic lib/firmware/dpaa2 lib/firmware/ti-connectivity
+		RUN du -h -d 3 -x .
 
 		# Get the kernel image...
 		RUN cp -v boot/vmlinuz* /armbian/output/kernel
 
-		# Create a tarball with the modules in lib
-		RUN tar -cvf /armbian/output/kernel.tar lib
+		# Show the size of lib -- firmware is huge
+		RUN du -h -d 2 -x lib | sort -h
+
+		# Create a tarball with the modules (and firmware) in lib
+		RUN tar -cf /armbian/output/kernel.tar lib
 
 		# Create a tarball with the dtbs in usr/lib/linux-image-*
 		RUN { cd usr/lib/linux-image-* || { echo "No DTBS for this arch, empty tar..." && mkdir -p usr/lib/linux-image-no-dtbs && cd usr/lib/linux-image-* ; } ; }  && pwd && du -h -d 1 . && tar -czvf /armbian/output/dtbs.tar.gz . && ls -lah /armbian/output/dtbs.tar.gz
 
 		# Show the contents of the output dir
 		WORKDIR /armbian/output
-		RUN ls -lahtS
+		RUN tree
+		RUN du -h . 
 
 		# Output layer should be in the layout expected by LinuxKit (dtbs.tar.gz is ignored)
 		FROM scratch
