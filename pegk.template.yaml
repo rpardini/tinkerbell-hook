@@ -15,9 +15,12 @@ onboot:
     command: [ "/sbin/rngd", "-1" ]
   - name: sysctl
     image: linuxkit/sysctl:5a374e4bf3e5a7deeacff6571d0f30f7ea8f56db
-  #- name: dhcpcd
-  #  image: linuxkit/dhcpcd:e9e3580f2de00e73e7b316a007186d22fea056ee
-  #  command: [ "/sbin/dhcpcd", "--nobackground", "-f", "/dhcpcd.conf", "-1" ]
+  - name: modprobe
+    image: linuxkit/modprobe:ab5ac4d5e7e7a5f2d103764850f7846b69230676
+    command: [ "modprobe", "cdc_ncm" ] # for usb ethernet dongles
+  - name: dhcpcd
+    image: linuxkit/dhcpcd:e9e3580f2de00e73e7b316a007186d22fea056ee
+    command: [ "/sbin/dhcpcd", "--nobackground", "-f", "/dhcpcd.conf", "-1" ]
 services:
   #- name: rngd
   #  image: linuxkit/rngd:cdb919e4aee49fed0bf6075f0a104037cba83c39
@@ -29,12 +32,12 @@ services:
       - /:/host2
     env:
       - INSECURE=true
-  #- name: sshd
-  #  image: linuxkit/sshd:75f399fbfb6455dfccd4cb30543d0b4b494d28c8
-  #  binds.add:
-  #    - /root/.ssh:/root/.ssh
-#files:
-#  - path: root/.ssh/authorized_keys
-#    source: ~/.ssh/id_rsa.pub
-#    mode: "0600"
-#    optional: true
+  - name: sshd
+    image: linuxkit/sshd:75f399fbfb6455dfccd4cb30543d0b4b494d28c8
+    binds.add:
+      - /root/.ssh:/root/.ssh
+files:
+  - path: root/.ssh/authorized_keys
+    source: ~/.ssh/id_rsa.pub
+    mode: "0600"
+    optional: true
