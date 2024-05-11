@@ -34,8 +34,8 @@ if [[ "${DEBUG}" == "yes" ]]; then
 fi
 
 ### Configuration
-declare -g HOOK_KERNEL_OCI_BASE="${HOOK_KERNEL_OCI_BASE:-"quay.io/tinkerbell/hook-kernel"}"
-declare -g HOOK_LK_CONTAINERS_OCI_BASE="${HOOK_LK_CONTAINERS_OCI_BASE:-"quay.io/tinkerbell/"}"
+declare -g HOOK_KERNEL_OCI_BASE="${HOOK_KERNEL_OCI_BASE:-"ghcr.io/rpardini/tinkerbell/hook-kernel"}"
+declare -g HOOK_LK_CONTAINERS_OCI_BASE="${HOOK_LK_CONTAINERS_OCI_BASE:-"ghcr.io/rpardini/tinkerbell/"}"
 
 declare -g SKOPEO_IMAGE="${SKOPEO_IMAGE:-"quay.io/skopeo/stable:v1.17.0"}" # See https://quay.io/repository/skopeo/stable?tab=tags&tag=latest
 
