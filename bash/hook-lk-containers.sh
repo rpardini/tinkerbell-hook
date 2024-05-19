@@ -7,6 +7,13 @@ function build_all_hook_linuxkit_containers() {
 	# when adding new container builds here you'll also want to add them to the
 	# `linuxkit_build` function in the linuxkit.sh file.
 	# # NOTE: linuxkit containers must be in the images/ directory
+
+	# cgroups-v1 versions; for use with LinuxKit 1.0.y
+	build_hook_linuxkit_container cgv1-hook-bootkit HOOK_CONTAINER_CGV1_BOOTKIT_IMAGE
+	build_hook_linuxkit_container cgv1-hook-docker HOOK_CONTAINER_CGV1_DOCKER_IMAGE
+	build_hook_linuxkit_container cgv1-hook-mdev HOOK_CONTAINER_CGV1_MDEV_IMAGE
+
+	# regular / cgroups v2 images
 	build_hook_linuxkit_container hook-bootkit HOOK_CONTAINER_BOOTKIT_IMAGE
 	build_hook_linuxkit_container hook-docker HOOK_CONTAINER_DOCKER_IMAGE
 	build_hook_linuxkit_container hook-mdev HOOK_CONTAINER_MDEV_IMAGE
@@ -65,7 +72,6 @@ function build_hook_linuxkit_container() {
 
 	return 0
 }
-
 
 function push_hook_linuxkit_container() {
 	declare container_oci_ref="${1}"
