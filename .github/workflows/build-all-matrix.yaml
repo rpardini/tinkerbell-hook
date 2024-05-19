@@ -202,14 +202,10 @@ jobs:
           generated_release_notes=$(gh api 'repos/{owner}/{repo}/releases/generate-notes' -F tag_name=latest --jq .body)
           cat >>"$GITHUB_ENV" <<-EOF
           	RELEASE_NOTES<<RELEASE_NOTES_EOF
-          	# :warning: :rotating_light: :boom: Note!!! :boom: :rotating_light: :warning:
-
-          	The uploaded files will be updated on the next merge to main, as such download them before use to avoid surprises.
-
+          	## :warning: This is an automated release.
           	---
           	Commit: ${{steps.commitid.outputs.short}}
           	---
-
           	$generated_release_notes
           	RELEASE_NOTES_EOF
           EOF
@@ -228,13 +224,14 @@ jobs:
           method: sha512
           patterns: "*.tar.gz"
 
-      - name: Update latest release
-        uses: softprops/action-gh-release@v2
+      # Release the artifacts into GitHub Releases. @TODO this GHA Action is not ideal, uses old nodejs, but I can't find a better one.
+      - name: "GH Release"
+        uses: "marvinpinto/action-automatic-releases@latest"
         with:
-          name: Hook Latest Development Build
-          body: ${{env.RELEASE_NOTES}}
+          repo_token: "${{ secrets.GITHUB_TOKEN }}"
+          automatic_release_tag: "${{needs.matrix_prep.outputs.created}}"
+          prerelease: false
+          title: "${{needs.matrix_prep.outputs.created}}"
           files: |
             *.tar.gz
             checksum.txt
-          prerelease: true
-          tag_name: latest
