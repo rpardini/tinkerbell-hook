@@ -96,16 +96,11 @@ function linuxkit_build() {
 	fi
 
 	log info "Building Hook with kernel ${inventory_id} using linuxkit: ${lk_args[*]}"
-	"${linuxkit_bin}" build "--format" "kernel+squashfs" "${lk_args[@]}"
+	"${linuxkit_bin}" build "--format" "kernel+initrd" "${lk_args[@]}"
 
 	if [[ "${LK_RUN}" == "qemu" ]]; then
 		linuxkit_run_qemu
 		return 0
-	fi
-
-	# if using squashfs (hook-squashfs.img), rename to the expected output (initrd)
-	if [[ -f "${lk_output_dir}/hook-squashfs.img" ]]; then
-		mv -v "${lk_output_dir}/hook-squashfs.img" "${lk_output_dir}/hook-initrd.img"
 	fi
 
 	# rename outputs
@@ -169,12 +164,11 @@ function linuxkit_run_qemu() {
 
 	declare -a lk_run_args=(
 		"run" "qemu"
-		#"--kernel"                                        # Boot image is kernel+initrd+cmdline 'path'-kernel/-initrd/-cmdline
-		"--squashfs"                                       # Boot image is a kernel+squashfs+cmdline
+		"--arch" "${kernel_info['ARCH']}"                  # Not DOCKER_ARCH
+		"--kernel"                                         # Boot image is kernel+initrd+cmdline 'path'-kernel/-initrd/-cmdline
 		"--uefi"                                           # Use UEFI boot
 		"--cpus" "2"                                       # Use 2 CPU's
 		"--mem" "2048"                                     # Use 2GB of RAM
-		"--arch" "${kernel_info['ARCH']}"                  # Not DOCKER_ARCH
 		"--disk" "file=${disk_path},size=10G,format=qcow2" # causes a /dev/sda to exist @TODO doesn't show up under /dev/disk/by-id -- why?
 	)
 
