@@ -92,8 +92,16 @@ fi
 if [ -n "${serial}" ] && [ -n "${model}" ]; then
 	echo "USING SYSFS model='${model}' serial='${serial}'" >&2
 else
-	wwid_raw="$(cat /sys/class/block/sda/device/wwid)"
-	echo "SYSFS model='${model}' serial='${serial}' insufficient, trying to parse from wwid_raw:'${wwid_raw}'" >&2
+	echo "SYSFS model='${model}' serial='${serial}' insufficient, trying to parse from wwid" >&2
+	unset wwid_raw
+	if [ -f "$SYSFS/class/block/$_check_dev/wwid" ]; then
+		echo "FOUND WWID FILE: '$SYSFS/class/block/$_check_dev/wwid'" >&2
+		wwid_raw="$(cat "$SYSFS/class/block/$_check_dev/wwid")"
+	elif [ -f "$SYSFS/class/block/$_check_dev/device/wwid" ]; then
+		echo "FOUND WWID FILE: '$SYSFS/class/block/$_check_dev/device/wwid'" >&2
+		wwid_raw="$(cat "$SYSFS/class/block/$_check_dev/device/wwid")"
+	fi
+	echo "SYSFS parse model/serial from wwid_raw:'${wwid_raw}'" >&2
 	if [ -n "${wwid_raw}" ]; then
 		wwid_raw=$(echo "${wwid_raw}" | sed 's/^ *//;s/ *$//')   # Remove leading and trailing spaces
 		wwid_prefix=$(echo "${wwid_raw}" | awk '{print $1}')     # Extract the wwid_prefix (first field)
