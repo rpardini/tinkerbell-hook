@@ -124,20 +124,26 @@ else
 
 	# if model is unset, replace it with the parsed wwid_model
 	if [ -z "${model}" ]; then
-		echo "USING WWID model='${wwid_model}'" >&2
+		echo "USING WWID model='${wwid_model}' as model..." >&2
 		model="${wwid_model}"
 	fi
 
 	# if serial is unset, replace it with the parsed wwid_serial
 	if [ -z "${serial}" ]; then
-		echo "USING WWID serial='${wwid_serial}'" >&2
+		echo "USING WWID wwid_serial='${wwid_serial}' as serial..." >&2
 		serial="${wwid_serial}"
 	fi
 
 	# if we still have no serial, just use the wwid as serial as fallback;
 	if [ -z "${serial}" ]; then
 		echo "FALLBACK: USING WWID as serial='${wwid}'" >&2
-		serial="${wwid_raw}"
+		serial="${wwid}"
+	fi
+
+	# rescue: if _still_ no serial set, set to hardcoded string 'noserial'.
+	if [ -z "${serial}" ]; then
+		echo "FALLBACK: USING 'noserial' as serial..." >&2
+		serial="noserial"
 	fi
 fi
 
