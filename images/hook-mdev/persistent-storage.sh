@@ -63,14 +63,18 @@ else
 fi
 
 model=$(sanitise_file "$SYSFS/class/block/$_check_dev/device/model")
+echo "INITIAL model: '${model}'" >&2
 name=$(sanitise_file "$SYSFS/class/block/$_check_dev/device/name") # only used for mmcblk case
+echo "INITIAL name: '${name}'" >&2
 serial=$(sanitise_file "$SYSFS/class/block/$_check_dev/device/serial")
+echo "INITIAL serial: '${serial}'" >&2
 # Special case where block devices have serials attached to the block itself, like virtio-blk
 : ${serial:=$(sanitise_file "$SYSFS/class/block/$_check_dev/serial")}
+echo "DEVICE serial (after block-serial): '${serial}'" >&2
 wwid=$(sanitise_file "$SYSFS/class/block/$_check_dev/wwid")
 echo "INITIAL wwid: '${wwid}'" >&2
 : ${wwid:=$(sanitise_file "$SYSFS/class/block/$_check_dev/device/wwid")}
-echo "DEVICE wwid: '${wwid}'" >&2
+echo "DEVICE wwid (from device-wwid): '${wwid}'" >&2
 
 # Sets variables LABEL, PARTLABEL, PARTUUID, TYPE, UUID depending on
 # blkid output (busybox blkid will not provide PARTLABEL or PARTUUID)
@@ -88,7 +92,7 @@ if [ -n "$wwid" ]; then
 	esac
 fi
 
-# if no model or  noserial is available, lets parse the wwid and try to use it
+# if no model or no serial is available, lets parse the wwid and try to use it
 if [ -n "${serial}" ] && [ -n "${model}" ]; then
 	echo "USING SYSFS model='${model}' serial='${serial}'" >&2
 else
@@ -128,6 +132,12 @@ else
 	if [ -z "${serial}" ]; then
 		echo "USING WWID serial='${wwid_serial}'" >&2
 		serial="${wwid_serial}"
+	fi
+
+	# if we still have no serial, just use the wwid as serial as fallback;
+	if [ -z "${serial}" ]; then
+		echo "FALLBACK: USING WWID as serial='${wwid}'" >&2
+		serial="${wwid_raw}"
 	fi
 fi
 
