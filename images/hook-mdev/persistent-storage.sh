@@ -1,5 +1,7 @@
 #!/bin/sh
 
+echo "STARTING persistent-storage script with MDEV='${MDEV}' ACTION='${ACTION}' all params: $*" >&2
+
 symlink_action() {
 	case "$ACTION" in
 		add) ln -sf "$1" "$2" ;;
@@ -63,7 +65,9 @@ serial=$(sanitise_file "$SYSFS/class/block/$_check_dev/device/serial")
 # Special case where block devices have serials attached to the block itself, like virtio-blk
 : ${serial:=$(sanitise_file "$SYSFS/class/block/$_check_dev/serial")}
 wwid=$(sanitise_file "$SYSFS/class/block/$_check_dev/wwid")
+echo "INITIAL wwid: '${wwid}'" >&2
 : ${wwid:=$(sanitise_file "$SYSFS/class/block/$_check_dev/device/wwid")}
+echo "DEVICE wwid: '${wwid}'" >&2
 
 # Sets variables LABEL, PARTLABEL, PARTUUID, TYPE, UUID depending on
 # blkid output (busybox blkid will not provide PARTLABEL or PARTUUID)
@@ -72,17 +76,64 @@ eval $(blkid /dev/$MDEV | cut -d: -f2-)
 if [ -n "$wwid" ]; then
 	case "$MDEV" in
 		nvme*) symlink_action ../../$MDEV disk/by-id/nvme-${wwid}${partsuffix} ;;
+		sd*) symlink_action ../../$MDEV disk/by-id/scsi-${wwid}${partsuffix} ;;
+		sr*) symlink_action ../../$MDEV disk/by-id/scsi-ro-${wwid}${partsuffix} ;;
+		vd*) symlink_action ../../$MDEV disk/by-id/virtio-${wwid}${partsuffix} ;;
 	esac
 	case "$wwid" in
 		naa.*) symlink_action ../../$MDEV disk/by-id/wwn-0x${wwid#naa.}${partsuffix} ;;
 	esac
 fi
 
+# If no model or no serial is available, lets parse the wwid and try to use it.
+# Read the WWID from the file
+wwid_raw=$(cat /sys/class/block/sda/device/wwid)
+
+# Ensure we have a non-empty WWID
+if [ -n "$wwid_raw" ]; then
+	# Remove leading and trailing spaces
+	wwid_raw=$(echo "$wwid_raw" | sed 's/^ *//;s/ *$//')
+
+	# Extract the prefix (first field)
+	prefix=$(echo "$wwid_raw" | awk '{print $1}')
+
+	# Remove the prefix from the wwid string
+	rest=$(echo "$wwid_raw" | sed "s/^$prefix *//")
+
+	# Extract the serial (last field)
+	serial=$(echo "$rest" | awk '{print $NF}')
+
+	# Remove the serial from the rest of the string
+	rest=$(echo "$rest" | sed "s/ $serial$//")
+
+	# Replace any remaining spaces in the rest part with underscores
+	model=$(echo "$rest" | tr ' ' '_')
+
+	# Remove consecutive underscores
+	model=$(echo "$model" | sed 's/__*/_/g')
+
+	# Remove leading and trailing underscores
+	model=$(echo "$model" | sed 's/^_//;s/_$//')
+
+	# Replace periods in the prefix with dashes
+	prefix=$(echo "$prefix" | sed 's/\./-/g')
+
+	# Construct the final identifier
+	identifier="${prefix}-${model}_${serial}"
+
+	echo "WWID parsing came up with identifier='${identifier}', prefix='${prefix}' model='${model}', serial='${serial}'" >&2
+else
+	echo "WWID is empty or not found" >&2
+fi
+
 if [ -n "$serial" ]; then
+	echo "GOT SERIAL: serial='${serial}' model='${model}' and wwid='${wwid}'" >&2
 	if [ -n "$model" ]; then
 		case "$MDEV" in
 			nvme*) symlink_action ../../$MDEV disk/by-id/nvme-${model}_${serial}${partsuffix} ;;
+			sr*) symlink_action ../../$MDEV disk/by-id/ata-ro-${model}_${serial}${partsuffix} ;;
 			sd*) symlink_action ../../$MDEV disk/by-id/ata-${model}_${serial}${partsuffix} ;;
+			vd*) symlink_action ../../$MDEV disk/by-id/virtio-${model}_${serial}${partsuffix} ;;
 		esac
 	fi
 	if [ -n "$name" ]; then
@@ -138,9 +189,11 @@ if [ "${MDEV#sd}" != "$MDEV" ]; then
 	case "$sysdev" in
 		*usb[0-9]*)
 			# require vfat for devices without partition
-			if ! [ -e $SYSFS/block/$MDEV ] || [ TYPE="vfat" ]; then
+			if ! [ -e $SYSFS/block/$MDEV ] || [ TYPE="vfat" ]; then # @TODO: rpardini: upstream bug here? should be $TYPE
 				symlink_action $MDEV usbdisk
 			fi
 			;;
 	esac
 fi
+
+echo "FINISHED persistent-storage script with MDEV='${MDEV}' ACTION='${ACTION}' all params: $*" >&2
