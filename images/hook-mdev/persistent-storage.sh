@@ -4,7 +4,10 @@ echo "STARTING persistent-storage script with MDEV='${MDEV}' ACTION='${ACTION}' 
 
 symlink_action() {
 	case "$ACTION" in
-		add) ln -sf "$1" "$2" ;;
+		add)
+			echo "SYMLINK ADD: ln -sf '$1' '$2'" >&2
+			ln -sf "$1" "$2"
+			;;
 		remove) rm -f "$2" ;;
 	esac
 }
@@ -60,7 +63,7 @@ else
 fi
 
 model=$(sanitise_file "$SYSFS/class/block/$_check_dev/device/model")
-name=$(sanitise_file "$SYSFS/class/block/$_check_dev/device/name")
+name=$(sanitise_file "$SYSFS/class/block/$_check_dev/device/name") # only used for mmcblk case
 serial=$(sanitise_file "$SYSFS/class/block/$_check_dev/device/serial")
 # Special case where block devices have serials attached to the block itself, like virtio-blk
 : ${serial:=$(sanitise_file "$SYSFS/class/block/$_check_dev/serial")}
@@ -85,50 +88,45 @@ if [ -n "$wwid" ]; then
 	esac
 fi
 
-# If no model or no serial is available, lets parse the wwid and try to use it.
-# Read the WWID from the file
-wwid_raw=$(cat /sys/class/block/sda/device/wwid)
-
-# Ensure we have a non-empty WWID
-if [ -n "$wwid_raw" ]; then
-	# Remove leading and trailing spaces
-	wwid_raw=$(echo "$wwid_raw" | sed 's/^ *//;s/ *$//')
-
-	# Extract the prefix (first field)
-	prefix=$(echo "$wwid_raw" | awk '{print $1}')
-
-	# Remove the prefix from the wwid string
-	rest=$(echo "$wwid_raw" | sed "s/^$prefix *//")
-
-	# Extract the serial (last field)
-	serial=$(echo "$rest" | awk '{print $NF}')
-
-	# Remove the serial from the rest of the string
-	rest=$(echo "$rest" | sed "s/ $serial$//")
-
-	# Replace any remaining spaces in the rest part with underscores
-	model=$(echo "$rest" | tr ' ' '_')
-
-	# Remove consecutive underscores
-	model=$(echo "$model" | sed 's/__*/_/g')
-
-	# Remove leading and trailing underscores
-	model=$(echo "$model" | sed 's/^_//;s/_$//')
-
-	# Replace periods in the prefix with dashes
-	prefix=$(echo "$prefix" | sed 's/\./-/g')
-
-	# Construct the final identifier
-	identifier="${prefix}-${model}_${serial}"
-
-	echo "WWID parsing came up with identifier='${identifier}', prefix='${prefix}' model='${model}', serial='${serial}'" >&2
+# if no model or  noserial is available, lets parse the wwid and try to use it
+if [ -n "${serial}" ] && [ -n "${model}" ]; then
+	echo "USING SYSFS model='${model}' serial='${serial}'" >&2
 else
-	echo "WWID is empty or not found" >&2
+	wwid_raw="$(cat /sys/class/block/sda/device/wwid)"
+	echo "SYSFS model='${model}' serial='${serial}' insufficient, trying to parse from wwid_raw:'${wwid_raw}'" >&2
+	if [ -n "${wwid_raw}" ]; then
+		wwid_raw=$(echo "${wwid_raw}" | sed 's/^ *//;s/ *$//')   # Remove leading and trailing spaces
+		wwid_prefix=$(echo "${wwid_raw}" | awk '{print $1}')     # Extract the wwid_prefix (first field)
+		rest=$(echo "${wwid_raw}" | sed "s/^${wwid_prefix} *//") # Remove the wwid_prefix from the wwid string
+		wwid_serial=$(echo "${rest}" | awk '{print $NF}')        # Extract the serial (last field)
+		rest=$(echo "${rest}" | sed "s/ ${wwid_serial}$//")      # Remove the serial from the rest of the string
+		wwid_model=$(echo "${rest}" | tr ' ' '_')                # Replace any remaining spaces in the rest part with underscores
+		wwid_model=$(echo "${wwid_model}" | sed 's/__*/_/g')     # Remove consecutive underscores
+		wwid_model=$(echo "${wwid_model}" | sed 's/^_//;s/_$//') # Remove leading and trailing underscores
+		wwid_prefix=$(echo "${wwid_prefix}" | sed 's/\./-/g')    # Replace periods in the wwid_prefix with dashes
+		unset rest
+		echo "WWID parsing came up with wwid_prefix='${wwid_prefix}' wwid_model='${wwid_model}', wwid_serial='${wwid_serial}'" >&2
+	else
+		echo "WWID is empty or not found" >&2
+	fi
+
+	# if model is unset, replace it with the parsed wwid_model
+	if [ -z "${model}" ]; then
+		echo "USING WWID model='${wwid_model}'" >&2
+		model="${wwid_model}"
+	fi
+
+	# if serial is unset, replace it with the parsed wwid_serial
+	if [ -z "${serial}" ]; then
+		echo "USING WWID serial='${wwid_serial}'" >&2
+		serial="${wwid_serial}"
+	fi
 fi
 
 if [ -n "$serial" ]; then
-	echo "GOT SERIAL: serial='${serial}' model='${model}' and wwid='${wwid}'" >&2
+	echo "GOT SERIAL: serial='${serial}' model='${model}'" >&2
 	if [ -n "$model" ]; then
+		echo "GOT MODEL: serial='${serial}' model='${model}'" >&2
 		case "$MDEV" in
 			nvme*) symlink_action ../../$MDEV disk/by-id/nvme-${model}_${serial}${partsuffix} ;;
 			sr*) symlink_action ../../$MDEV disk/by-id/ata-ro-${model}_${serial}${partsuffix} ;;
