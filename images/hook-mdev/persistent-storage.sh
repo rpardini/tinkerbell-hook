@@ -1,6 +1,6 @@
 #!/bin/sh
 
-echo "STARTING persistent-storage script with MDEV='${MDEV}' ACTION='${ACTION}' all params: $*" >&2
+echo "--> STARTING persistent-storage script with MDEV='${MDEV}' ACTION='${ACTION}' all params: $*" >&2
 
 symlink_action() {
 	case "$ACTION" in
@@ -202,4 +202,5 @@ if [ "${MDEV#sd}" != "$MDEV" ]; then
 	esac
 fi
 
-echo "FINISHED persistent-storage script with MDEV='${MDEV}' ACTION='${ACTION}' all params: $*" >&2
+echo "--> FINISHED persistent-storage script with MDEV='${MDEV}' ACTION='${ACTION}' all params: $*" >&2
+echo "" >&2
