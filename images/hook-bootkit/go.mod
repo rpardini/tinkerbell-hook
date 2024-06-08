@@ -1,6 +1,8 @@
 module github.com/tinkerbell/hook/hook-bootkit
 
-go 1.17
+go 1.21
+
+toolchain go1.22.3
 
 require (
 	github.com/cenkalti/backoff/v4 v4.3.0
