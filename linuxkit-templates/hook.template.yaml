@@ -97,63 +97,18 @@ services:
     env:
       - INSECURE=true
     devices:
-    - path: all
-      type: b
-    - path: "/dev/console"
-      type: c
-      major: 5
-      minor: 1
-      mode: "0666"
-    - path: "/dev/tty0"
-      type: c
-      major: 4
-      minor: 0
-      mode: "0666"
-    - path: "/dev/tty1"
-      type: c
-      major: 4
-      minor: 1
-      mode: "0666"
-    - path: "/dev/ttyS0"
-      type: c
-      major: 4
-      minor: 64
-      mode: "0666"
-    - path: "/dev/ttyS1"
-      type: c
-      major: 4
-      minor: 65
-      mode: "0666"
-    - path: "/dev/ttyAMA0"
-      type: c
-      major: 204
-      minor: 64
-      mode: "0666"
-    - path: "/dev/ttyAMA1"
-      type: c
-      major: 204
-      minor: 65
-      mode: "0666"
-    - path: "/dev/ttyAML0"
-      type: c
-      major: 243
-      minor: 0
-      mode: "0666"
-    - path: "/dev/ttyAML1"
-      type: c
-      major: 243
-      minor: 1
-      mode: "0666"
-    - path: "/dev/ttyUSB0"
-      type: c
-      major: 188
-      minor: 0
-      mode: "0666"
-    - path: "/dev/ttyUSB1"
-      type: c
-      major: 188
-      minor: 1
-      mode: "0666"
+      - { path: all, type: b }
+      - { type: c, major: 005, minor: 001, mode: "0666", path: "/dev/console" }
+      - { type: c, major: 004, minor: 000, mode: "0666", path: "/dev/tty0" }
+      - { type: c, major: 004, minor: 001, mode: "0666", path: "/dev/tty1" }
+      - { type: c, major: 004, minor: 064, mode: "0666", path: "/dev/ttyS0" }
+      - { type: c, major: 004, minor: 065, mode: "0666", path: "/dev/ttyS1" }
+      - { type: c, major: 204, minor: 064, mode: "0666", path: "/dev/ttyAMA0" }
+      - { type: c, major: 204, minor: 065, mode: "0666", path: "/dev/ttyAMA1" }
+      - { type: c, major: 243, minor: 000, mode: "0666", path: "/dev/ttyAML0" }
+      - { type: c, major: 243, minor: 001, mode: "0666", path: "/dev/ttyAML1" }
+      - { type: c, major: 188, minor: 000, mode: "0666", path: "/dev/ttyUSB0" }
+      - { type: c, major: 188, minor: 001, mode: "0666", path: "/dev/ttyUSB1" }
 
   - name: hook-docker
     image: "${HOOK_CONTAINER_DOCKER_IMAGE}"
@@ -179,8 +134,8 @@ services:
         - /var/run/docker
         - /var/run/worker
     devices:
-    - path: all
-      type: b
+      - path: all
+        type: b
 
   - name: hook-bootkit
     image: "${HOOK_CONTAINER_BOOTKIT_IMAGE}"
@@ -196,7 +151,7 @@ services:
     runtime:
       mkdir:
         - /var/run/docker
-  
+
   - name: dhcpcd-daemon
     image: linuxkit/dhcpcd:v1.0.0
     command: [ "/etc/ip/dhcp.sh", "false" ] # 2nd paramter is one-shot true/false: true for onboot, false for services
