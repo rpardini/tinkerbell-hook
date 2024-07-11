@@ -213,8 +213,20 @@ services:
       mkdir:
         - /var/lib/dhcpcd
 
-#dbg  - name: sshd
-#dbg    image: linuxkit/sshd:v1.0.0
+#enable-ssh#  - name: sshd
+#enable-ssh#    image: linuxkit/sshd:v1.0.0
+#enable-ssh#    capabilities:
+#enable-ssh#      - all
+#enable-ssh#    binds.add:
+#enable-ssh#      - /etc/profile.d/local.sh:/etc/profile.d/local.sh
+#enable-ssh#      - /etc/securetty:/etc/securetty
+#enable-ssh#      - /etc/motd:/etc/motd
+#enable-ssh#      - /etc/os-release:/etc/os-release
+#enable-ssh#      - /root/.ssh/authorized_keys:/root/.ssh/authorized_keys
+#enable-ssh#      - /:/host_root
+#enable-ssh#      - /dev:/dev
+#enable-ssh#      - /dev/console:/dev/console
+#enable-ssh#      - /usr/bin/nerdctl:/usr/bin/nerdctl
 
 files:
   - path: etc/profile.d/local.sh
@@ -292,10 +304,10 @@ files:
       ttyUSB1
       ttyUSB2
 
-#dbg  - path: root/.ssh/authorized_keys
-#dbg    source: ~/.ssh/id_rsa.pub
-#dbg    mode: "0600"
-#dbg    optional: true
+#enable-ssh#  - path: root/.ssh/authorized_keys
+#enable-ssh#    source: ~/.ssh/authorized_keys
+#enable-ssh#    mode: "0600"
+#enable-ssh#    optional: true
 
 trust:
   org:
