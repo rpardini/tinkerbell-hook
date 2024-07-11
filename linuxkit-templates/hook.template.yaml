@@ -98,11 +98,13 @@ services:
       - INSECURE=true
     devices:
       - { path: all, type: b }
+      # consoles: keep in sync with "etc/securetty" in files section below
       - { type: c, major: 005, minor: 001, mode: "0666", path: "/dev/console" }
       - { type: c, major: 004, minor: 000, mode: "0666", path: "/dev/tty0" }
       - { type: c, major: 004, minor: 001, mode: "0666", path: "/dev/tty1" }
       - { type: c, major: 004, minor: 064, mode: "0666", path: "/dev/ttyS0" }
       - { type: c, major: 004, minor: 065, mode: "0666", path: "/dev/ttyS1" }
+      - { type: c, major: 004, minor: 066, mode: "0666", path: "/dev/ttyS2" }
       - { type: c, major: 204, minor: 064, mode: "0666", path: "/dev/ttyAMA0" }
       - { type: c, major: 204, minor: 065, mode: "0666", path: "/dev/ttyAMA1" }
       - { type: c, major: 243, minor: 000, mode: "0666", path: "/dev/ttyAML0" }
@@ -239,6 +241,7 @@ files:
       hvc0
       ttyS0
       ttyS1
+      ttyS2
       ttyAMA0
       ttyAMA1
       ttyAML0
