@@ -16,11 +16,6 @@ RUN apk add --no-cache --initdb -p /out \
 # Remove apk residuals
 RUN rm -rf /out/etc/apk /out/lib/apk /out/var/cache
 
-# Add our vlan-handling script
-RUN mkdir -p /etc/ip
-ADD vlan.sh /etc/ip/vlan.sh
-RUN chmod 0777 /etc/ip/vlan.sh
-
 FROM scratch
 ENTRYPOINT []
 CMD []
