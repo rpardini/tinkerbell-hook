@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-declare -g ARMBIAN_BASE_ORAS_REF="${ARMBIAN_BASE_ORAS_REF:-"ghcr.io/armbian/os"}"
+declare -g ARMBIAN_BASE_ORAS_REF="${ARMBIAN_BASE_ORAS_REF:-"ghcr.io/armsurvivors/armbian-release"}"
 
 function obtain_kernel_output_id_armbian() {
 	: "${inventory_id:?"ERROR: inventory_id is not defined"}"
