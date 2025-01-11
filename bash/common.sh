@@ -42,7 +42,7 @@ function install_dependencies() {
 	if [[ "$(uname)" == "Darwin" ]]; then
 		command -v gtar > /dev/null || brew_pkgs+=("gnu-tar")
 		command -v greadlink > /dev/null || brew_pkgs+=("coreutils")
-
+		command -v gsed > /dev/null || brew_pkgs+=("gnu-sed")
 	fi
 
 	# If more than zero entries in the array, install
@@ -70,7 +70,7 @@ function install_dependencies() {
 		# Re-export PATH with the gnu-version of coreutils and tar
 		declare brew_prefix
 		brew_prefix="$(brew --prefix)"
-		export PATH="${brew_prefix}/opt/gnu-tar/libexec/gnubin:${brew_prefix}/opt/coreutils/libexec/gnubin:${PATH}"
+		export PATH="${brew_prefix}/opt/gnu-sed/libexec/gnubin:${brew_prefix}/opt/gnu-tar/libexec/gnubin:${brew_prefix}/opt/coreutils/libexec/gnubin:${PATH}"
 		log debug "Darwin; PATH is now: ${PATH}"
 	fi
 
