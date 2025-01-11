@@ -23,3 +23,51 @@ function check_docker_daemon_for_sanity() {
 	}
 
 }
+
+# Utility to pull skopeo itself from SKOPEO_IMAGE; checks the local Docker cache and skips if found
+function pull_skopeo_image_if_not_in_local_docker_cache() {
+	# Check if the image is already in the local Docker cache
+	if docker image inspect "${SKOPEO_IMAGE}" &> /dev/null; then
+		log info "Skopeo image ${SKOPEO_IMAGE} is already in the local Docker cache; skipping pull."
+		return 0
+	fi
+
+	log info "Pulling Skopeo image ${SKOPEO_IMAGE}..."
+
+	pull_docker_image_from_remote_with_retries "${SKOPEO_IMAGE}"
+}
+
+# Utility to get the most recent tag for a given image, using Skopeo. no retries, a failure is fatal.
+# Sets the value of outer-scope variable latest_tag_for_docker_image, so declare it there.
+function get_latest_tag_for_docker_image_using_skopeo() {
+	declare image="$1"
+	latest_tag_for_docker_image="undetermined_tag"
+
+	# Pull separately to avoid tty hell in the subshell below
+	pull_skopeo_image_if_not_in_local_docker_cache
+
+	latest_tag_for_docker_image="$(docker run "${SKOPEO_IMAGE}" list-tags "docker://${image}" | jq -r ".Tags[]" | tail -1)"
+	log info "Found latest tag: '${latest_tag_for_docker_image}' for image '${image}'"
+}
+
+# Utility to pull from remote, with retries.
+function pull_docker_image_from_remote_with_retries() {
+	declare image="$1"
+	declare -i retries=3
+	declare -i retry_delay=5
+	declare -i retry_count=0
+
+	while [[ ${retry_count} -lt ${retries} ]]; do
+		if docker pull "${image}"; then
+			log info "Successfully pulled ${image}"
+			return 0
+		else
+			log warn "Failed to pull ${image}; retrying in ${retry_delay} seconds..."
+			sleep "${retry_delay}"
+			((retry_count += 1))
+		fi
+	done
+
+	log error "Failed to pull ${image} after ${retries} retries."
+	exit 1
+}
