@@ -30,7 +30,7 @@ function check_docker_daemon_for_sanity() {
 	# Once we know docker is sane, hook up a function that helps us trace invocations.
 	function docker() {
 		log debug "--> docker $*"
-		command docker "$@"
+		command docker "$@" < /dev/null # make stdin not a tty
 	}
 
 }
