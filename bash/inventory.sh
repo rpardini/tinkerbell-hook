@@ -2,7 +2,27 @@
 
 function produce_kernels_flavours_inventory() {
 	declare -g -A inventory_dict=()
+	declare -g -A bootable_inventory_dict=()
 
+	produce_default_kernel_inventory
+	produce_armbian_kernel_inventory
+
+	# if a function `produce_custom_kernel_inventory` exists, call it.
+	if type -t produce_custom_kernel_inventory &> /dev/null; then
+		log info "Custom kernel inventory function found, calling it."
+		produce_custom_kernel_inventory
+	fi
+
+	# extract keys & make readonly
+	declare -g -a -r inventory_ids=("${!inventory_dict[@]}")                   # extract the _keys_ from the inventory_ids dict
+	declare -g -A -r inventory_dict                                            # make kernels_data dict readonly
+	declare -g -a -r bootable_inventory_ids=("${!bootable_inventory_dict[@]}") # extract the _keys_ from the inventory_ids dict
+	declare -g -A -r bootable_inventory_dict                                   # make kernels_data dict readonly
+
+	return 0
+}
+
+function produce_default_kernel_inventory() {
 	##### METHOD=default; Hook's own kernel, in kernel/ directory
 	## Hook default kernel, source code stored in `kernel` dir in this repo -- currently 5.10.y
 	define_id "hook-default-amd64" METHOD='default' ARCH='x86_64' TAG='standard' SUPPORTS_ISO='yes' \
@@ -20,15 +40,16 @@ function produce_kernels_flavours_inventory() {
 		KERNEL_MAJOR='6' KERNEL_MINOR='6' KCONFIG='generic' FORCE_OUTPUT_ID='latest-lts'
 	define_id "hook-latest-lts-arm64" METHOD='default' ARCH='aarch64' TAG='lts' SUPPORTS_ISO='yes' \
 		KERNEL_MAJOR='6' KERNEL_MINOR='6' KCONFIG='generic' FORCE_OUTPUT_ID='latest-lts'
+}
 
-	##### METHOD=armbian; Foreign kernels, taken from Armbian's OCI repos. Those are "exotic" kernels for certain SoC's.
-	#                    edge = (release candidates or stable but rarely LTS, more aggressive patching)
-	#                    current = (LTS kernels, stable-ish patching)
-	#                    vendor/legacy = (vendor/BSP kernels, stable patching, NOT mainline, not frequently rebased)
-	#                    Check https://github.com/orgs/armbian/packages?tab=packages&q=kernel- for possibilities
-	#                    nb: when no ARMBIAN_KERNEL_VERSION, will use the first tag returned, high traffic, low cache rate.
-	#                        one might set eg ARMBIAN_KERNEL_VERSION='6.7.10-xxxx' to use a fixed version.
-
+##### METHOD=armbian; Foreign kernels, taken from Armbian's OCI repos. Those are "exotic" kernels for certain SoC's.
+#                    edge = (release candidates or stable but rarely LTS, more aggressive patching)
+#                    current = (LTS kernels, stable-ish patching)
+#                    vendor/legacy = (vendor/BSP kernels, stable patching, NOT mainline, not frequently rebased)
+#                    Check https://github.com/orgs/armbian/packages?tab=packages&q=kernel- for possibilities
+#                    nb: when no ARMBIAN_KERNEL_VERSION, will use the first tag returned, high traffic, low cache rate.
+#                        one might set eg ARMBIAN_KERNEL_VERSION='6.7.10-xxxx' to use a fixed version.
+function produce_armbian_kernel_inventory() {
 	### SBC-oriented:
 	## Armbian meson64 (Amlogic) edge Khadas VIM3/3L, Radxa Zero/2, LibreComputer Potatos, and many more
 	define_id "armbian-meson64-edge" METHOD='armbian' ARCH='aarch64' TAG='armbian-sbc' ARMBIAN_KERNEL_ARTIFACT='kernel-meson64-edge'
@@ -38,10 +59,12 @@ function produce_kernels_flavours_inventory() {
 
 	## Armbian rockchip64 (Rockchip) edge, for many rk356x/3399 SoCs. As of late December 2024, also for rk3588.
 	define_id "armbian-rockchip64-edge" METHOD='armbian' ARCH='aarch64' TAG='armbian-sbc' ARMBIAN_KERNEL_ARTIFACT='kernel-rockchip64-edge'
+	add_bootable_id "nanopct6" HANDLER='armbian_rockchip' TAG='armbian-sbc' # rk3588, mainline u-boot
 
 	## Armbian rk35xx (Rockchip) vendor, for rk3566, rk3568, rk3588, rk3588s SoCs -- 6.1-rkr4.1 - BSP / vendor kernel, roughly equivalent to Android's 6.1.84
 	# Use with edk2 (v0.9.1+) or mainline u-boot + EFI: matches the DT included in https://github.com/edk2-porting/edk2-rk3588 _after_ v0.9.1
 	define_id "armbian-rk35xx-vendor" METHOD='armbian' ARCH='aarch64' TAG='armbian-sbc' ARMBIAN_KERNEL_ARTIFACT='kernel-rk35xx-vendor'
+	add_bootable_id "r58x" HANDLER='armbian_rockchip' ARMBIAN_BOARD='mekotronics-r58x-pro' ARMBIAN_BRANCH='vendor' TAG='armbian-sbc'
 
 	###  Armbian mainline Generic UEFI kernels, for EFI capable machines might use those:
 	## Armbian generic edge UEFI kernel for arm64
@@ -49,10 +72,4 @@ function produce_kernels_flavours_inventory() {
 
 	## Armbian generic edge UEFI kernel (Armbian calls it x86)
 	define_id "armbian-uefi-x86-edge" METHOD='armbian' ARCH='x86_64' TAG='standard armbian-uefi' ARMBIAN_KERNEL_ARTIFACT='kernel-x86-edge'
-
-	#### END; extract keys & make readonly
-	declare -g -a -r inventory_ids=("${!inventory_dict[@]}") # extract the _keys_ from the inventory_ids dict
-	declare -g -A -r inventory_dict                          # make kernels_data dict readonly
-
-	return 0
 }
