@@ -115,14 +115,15 @@ function write_uboot_script() {
 		# Hook u-boot bootscript
 		echo "Starting Tinkerbell Hook boot script..."
 		printenv
-		setenv load_addr "0x9000000"
+		setenv load_addr "0x20000000"
+		setenv ramdisk_addr_r "0x40000000"
 		test -n "\${distro_bootpart}" || distro_bootpart=1
 		echo "Boot script loaded from \${devtype} \${devnum}:\${distro_bootpart}"
 		setenv bootargs "${UBOOT_EXTLINUX_CMDLINE}"
 		echo "Booting with: \${bootargs}"
 
-		echo "Loading initramfs... \${ramdisk_addr_r} /initramfs"
-		load \${devtype} \${devnum}:\${distro_bootpart} \${ramdisk_addr_r} /initramfs
+		echo "Loading initramfs... \${ramdisk_addr_r} /uinitrd"
+		load \${devtype} \${devnum}:\${distro_bootpart} \${ramdisk_addr_r} /uinitrd
 		echo "Loading kernel... \${kernel_addr_r} /vmlinuz"
 		load \${devtype} \${devnum}:\${distro_bootpart} \${kernel_addr_r} /vmlinuz
 		echo "Loading dtb... \${fdt_addr_r} /dtb/${UBOOT_KERNEL_DTB}"

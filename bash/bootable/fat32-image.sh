@@ -8,15 +8,6 @@ function create_image_fat32_root_from_dir() {
 	log info "Creating FAT32 image '${output_image}' from '${fat32_root_dir}'..."
 	log info "Partition type: ${partition_type}; ESP partition: ${esp_partitition}"
 
-	# Prepare arguments to virt-make-fs as an array
-	declare -a virt_make_fs_args=()
-	#virt_make_fs_args+=("--verbose") # it is very, very verbose, but reveals how guestfs does the magic.
-	virt_make_fs_args+=("--format=raw")
-	virt_make_fs_args+=("--partition=${partition_type}")
-	virt_make_fs_args+=("--type=vfat")
-	virt_make_fs_args+=("--size=+32M")
-	virt_make_fs_args+=("--label=hook")
-
 	# Create a Dockerfile; install guestfs, which does the heavy lifting of creating the GPT image with a FAT32 partition
 	# tl-dr: qemu in usermode, own kernel, /dev/loop. it's very, very slow, as no KVM is used since it's already inside a container.
 
@@ -31,9 +22,9 @@ function create_image_fat32_root_from_dir() {
 		set -x
 
 		# Hack: transform the initramfs using mkimage to a u-boot image
-		#mkimage -A arm64 -O linux -T ramdisk -C gzip -n uInitrd -d /work/input/initramfs /work/input/initramfs.uimg
-		#rm -fv /work/input/initramfs
-		#ls -lah /work/input/initramfs.uimg
+		mkimage -A arm64 -O linux -T ramdisk -C gzip -n uInitrd -d /work/input/initramfs /work/input/uinitrd
+		rm -f /work/input/initramfs
+		ls -lah /work/input/uinitrd
 
 		# Hack: boot.cmd -> boot.scr
 		if [ -f /work/input/boot.cmd ]; then
