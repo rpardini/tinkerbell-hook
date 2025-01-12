@@ -119,7 +119,7 @@ function write_uboot_script() {
 		setenv ramdisk_addr_r "0x40000000"
 		test -n "\${distro_bootpart}" || distro_bootpart=1
 		echo "Boot script loaded from \${devtype} \${devnum}:\${distro_bootpart}"
-		setenv bootargs "${UBOOT_EXTLINUX_CMDLINE}"
+		setenv bootargs "loglevel=7 console=ttyFIQ0,1500000 cgroup_enable=cpuset cgroup_memory=1 cgroup_enable=memory swapaccount=1"
 		echo "Booting with: \${bootargs}"
 
 		echo "Loading initramfs... \${ramdisk_addr_r} /uinitrd"
