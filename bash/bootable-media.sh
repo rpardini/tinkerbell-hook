@@ -38,7 +38,6 @@ function build_bootable_media() {
 	log info "Calling bootable build function: ${bootable_build_func}"
 	"${bootable_build_func}"
 
-
 }
 
 function get_bootable_info_dict() {

@@ -40,17 +40,9 @@ function build_bootable_armbian_uboot_rockchip() {
 	if [[ -z "${UBOOT_VERSION}" ]]; then
 		log info "UBOOT_VERSION is unset, obtaining the most recently pushed-to tag of ${uboot_oci_package}"
 		declare latest_tag_for_docker_image
-		get_latest_tag_for_docker_image_using_skopeo "${uboot_oci_package}"  ".\-S..." # regex to match the tag, like "2017.09-Sxxxx"
+		get_latest_tag_for_docker_image_using_skopeo "${uboot_oci_package}" ".\-S..." # regex to match the tag, like "2017.09-Sxxxx"
 		UBOOT_VERSION="${latest_tag_for_docker_image}"
 		log info "Using most recent Armbian u-boot tag: ${UBOOT_VERSION}"
 	fi
-
-
-
-
-
-
-
-
 
 }
