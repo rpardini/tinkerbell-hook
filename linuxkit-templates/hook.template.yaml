@@ -158,6 +158,11 @@ services:
       major: 4
       minor: 66
       mode: "0666"
+    - path: "/dev/ttyFIQ0"
+      type: c
+      major: 253
+      minor: 0
+      mode: "0666"
     - path: "/dev/ttyAMA0"
       type: c
       major: 204
@@ -233,7 +238,7 @@ services:
     runtime:
       mkdir:
         - /var/run/docker
-  
+
   - name: dhcpcd-daemon
     image: linuxkit/dhcpcd:v1.0.0
     command: [ "/etc/ip/dhcp.sh", "false" ] # 2nd paramter is one-shot true/false: true for onboot, false for services
