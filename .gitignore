@@ -9,6 +9,7 @@ hook*.*.yaml
 !linuxkit-templates
 out/
 cache/
+bootable/
 *.swp
 .idea
 kernel/Dockerfile.autogen.*

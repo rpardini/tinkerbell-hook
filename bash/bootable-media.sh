@@ -15,6 +15,29 @@ function build_bootable_media() {
 	get_kernel_info_dict "${bootable_info['INVENTORY_ID']}"
 	log info "kernel_info: $(declare -p kernel_info)"
 
+	# A few scenarios we want to support:
+	# A) UEFI bootable media; GPT + ESP, FAT32, GRUB, kernel/initrd, grub.conf + some kernel command line.
+	# B) RPi 3b/4/5 bootable media; GPT, non-ESP partition, FAT32, kernel/initrd, config.txt, cmdline.txt + some kernel command line.
+	# C) Rockchip bootable media; GPT, non-ESP partition, FAT32, extlinux.conf + some kernel command line; write u-boot bin on top of GPT via Armbian sh
+	# D) Amlogic bootable media; MBR, FAT32, extlinux.conf + some kernel command line; write u-boot bin on top of MBR via Armbian sh
+
+	# General process:
+	# Obtain extra variables from environment (BOARD/BRANCH for armbian); optional.
+	# Obtain the latest Armbian u-boot version from the OCI registry, using Skopeo.
+	# 1) (C/D) Obtain the u-boot artifact binaries using ORAS, given the version above; massage using Docker and extract the binaries.
+	# 1) (A) Obtain grub somehow; LinuxKit has them ready-to-go in a Docker image.
+	# 1) (B) Obtain the rpi firmware files (bootcode.bin, start.elf, fixup.dat) from the RaspberryPi Foundation
+	# 2) Prepare the FAT32 contents; kernel/initrd, grub.conf, config.txt, cmdline.txt, extlinux.conf depending on scenario
+	# 3) Create a GPT+ESP, GTP+non-ESP, or MBR partition table image with the contents of the FAT32 (use libguestfs)
+	# 4) For the scenarios with u-boot, write u-boot binaries to the correct offsets in the image.
+
+	# @TODO: possibly make sure the kernel and lk is built before delegating?
+
+	# Call the bootable build function
+	declare bootable_build_func="${bootable_info['BOOTABLE_BUILD_FUNC']}"
+	log info "Calling bootable build function: ${bootable_build_func}"
+	"${bootable_build_func}"
+
 }
 
 function get_bootable_info_dict() {
