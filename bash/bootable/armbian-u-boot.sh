@@ -73,6 +73,9 @@ function build_bootable_armbian_uboot_rockchip() {
 	cp -vp "out/hook/vmlinuz-${hook_id}" "${fat32_root_dir}/vmlinuz"
 	cp -vp "out/hook/initramfs-${hook_id}" "${fat32_root_dir}/initramfs"
 
+	declare -i initramfs_size_bytes
+	initramfs_size_bytes=$(stat --format="%s" "${fat32_root_dir}/initramfs")
+
 	# DTBs go into a dtb subdirectory
 	mkdir -p "${fat32_root_dir}/dtb"
 	# Extract the DTB .tar.gz into the root of the FAT32 partition; skip the first directory of the path of the extracted files
@@ -119,11 +122,11 @@ function write_uboot_script() {
 		setenv ramdisk_addr_r "0x40000000"
 		test -n "\${distro_bootpart}" || distro_bootpart=1
 		echo "Boot script loaded from \${devtype} \${devnum}:\${distro_bootpart}"
-		setenv bootargs "loglevel=7 console=ttyFIQ0,1500000 cgroup_enable=cpuset cgroup_memory=1 cgroup_enable=memory swapaccount=1"
+		setenv bootargs "${UBOOT_EXTLINUX_CMDLINE}"
 		echo "Booting with: \${bootargs}"
 
-		echo "Loading initramfs... \${ramdisk_addr_r} /uinitrd"
-		load \${devtype} \${devnum}:\${distro_bootpart} \${ramdisk_addr_r} /uinitrd
+		echo "Loading initramfs... \${ramdisk_addr_r} /initramfs"
+		load \${devtype} \${devnum}:\${distro_bootpart} \${ramdisk_addr_r} /initramfs
 		echo "Loading kernel... \${kernel_addr_r} /vmlinuz"
 		load \${devtype} \${devnum}:\${distro_bootpart} \${kernel_addr_r} /vmlinuz
 		echo "Loading dtb... \${fdt_addr_r} /dtb/${UBOOT_KERNEL_DTB}"
@@ -133,10 +136,10 @@ function write_uboot_script() {
 		fdt resize 65536
 
 		echo "Booting: booti \${kernel_addr_r} \${ramdisk_addr_r} \${fdt_addr_r} - args: \${bootargs}"
-		booti \${kernel_addr_r} \${ramdisk_addr_r} \${fdt_addr_r}
+		booti \${kernel_addr_r} \${ramdisk_addr_r}:${initramfs_size_bytes} \${fdt_addr_r}
 	BOOT_CMD
 
-	command -v bat && bat --file-name "boot.cmd" "${boot_cmd_file}"
+	command -v bat && bat --file-name "boot.scr" "${boot_cmd_file}"
 
 	return 0
 }

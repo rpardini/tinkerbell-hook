@@ -21,12 +21,7 @@ function create_image_fat32_root_from_dir() {
 		set -e
 		set -x
 
-		# Hack: transform the initramfs using mkimage to a u-boot image # @TODO refactor this out of here
-		mkimage -A arm64 -O linux -T ramdisk -C gzip -n uInitrd -d /work/input/initramfs /work/input/uinitrd
-		rm -f /work/input/initramfs
-		ls -lah /work/input/uinitrd
-
-		# Hack: boot.cmd -> boot.scr
+		# Hack: boot.cmd -> boot.scr # @TODO: separate phase
 		if [ -f /work/input/boot.cmd ]; then
 			echo "Converting boot.cmd to boot.scr..."
 			mkimage -C none -A arm -T script -d /work/input/boot.cmd /work/input/boot.scr
