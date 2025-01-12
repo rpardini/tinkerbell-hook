@@ -118,8 +118,8 @@ function write_uboot_script() {
 		# Hook u-boot bootscript; mkimage -C none -A arm -T script -d /boot.cmd /boot.scr
 		echo "Starting Tinkerbell Hook boot script..."
 		printenv
-		setenv kernel_addr_r "0x20000000"
-		setenv ramdisk_addr_r "0x40000000"
+		setenv ramdisk_addr_r "0x20000000"
+		setenv kernel_addr_r "0x40000000"
 		test -n "\${distro_bootpart}" || distro_bootpart=1
 		echo "Boot script loaded from \${devtype} \${devnum}:\${distro_bootpart}"
 		setenv bootargs "${UBOOT_EXTLINUX_CMDLINE}"
