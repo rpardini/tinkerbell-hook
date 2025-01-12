@@ -212,7 +212,7 @@ function obtain_armbian_uboot_tar_gz_from_oci() {
 	ARMBIAN_ORAS_UBOOT_DOCKERFILE
 
 	declare input_hash="" short_input_hash=""
-	input_hash="$(cat "${armbian_uboot_extract_dockerfile}" "kernel/${dockerfile_helper_filename}" | sha256sum - | cut -d ' ' -f 1)"
+	input_hash="$(cat "${armbian_uboot_extract_dockerfile}" "bootable/${dockerfile_helper_filename}" | sha256sum - | cut -d ' ' -f 1)"
 	short_input_hash="${input_hash:0:8}"
 	log debug "Input hash for u-boot: ${input_hash}"
 	log debug "Short input hash for u-boot: ${short_input_hash}"
