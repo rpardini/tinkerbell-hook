@@ -59,12 +59,12 @@ function produce_armbian_kernel_inventory() {
 
 	## Armbian rockchip64 (Rockchip) edge, for many rk356x/3399 SoCs. As of late December 2024, also for rk3588.
 	define_id "armbian-rockchip64-edge" METHOD='armbian' ARCH='aarch64' TAG='armbian-sbc' ARMBIAN_KERNEL_ARTIFACT='kernel-rockchip64-edge'
-	add_bootable_id "nanopct6" HANDLER='armbian_rockchip' TAG='armbian-sbc' # rk3588, mainline u-boot
+	add_bootable_id "uboot-rk" HANDLER='armbian_uboot_rockchip' TAG='armbian-sbc' # rk3588, mainline u-boot
 
 	## Armbian rk35xx (Rockchip) vendor, for rk3566, rk3568, rk3588, rk3588s SoCs -- 6.1-rkr4.1 - BSP / vendor kernel, roughly equivalent to Android's 6.1.84
 	# Use with edk2 (v0.9.1+) or mainline u-boot + EFI: matches the DT included in https://github.com/edk2-porting/edk2-rk3588 _after_ v0.9.1
 	define_id "armbian-rk35xx-vendor" METHOD='armbian' ARCH='aarch64' TAG='armbian-sbc' ARMBIAN_KERNEL_ARTIFACT='kernel-rk35xx-vendor'
-	add_bootable_id "r58x" HANDLER='armbian_rockchip' ARMBIAN_BOARD='mekotronics-r58x-pro' ARMBIAN_BRANCH='vendor' TAG='armbian-sbc'
+	add_bootable_id "uboot-rk35xx-vendor" HANDLER='armbian_uboot_rockchip' TAG='armbian-sbc'
 
 	###  Armbian mainline Generic UEFI kernels, for EFI capable machines might use those:
 	## Armbian generic edge UEFI kernel for arm64
