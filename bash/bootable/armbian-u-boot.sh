@@ -45,4 +45,62 @@ function build_bootable_armbian_uboot_rockchip() {
 		log info "Using most recent Armbian u-boot tag: ${UBOOT_VERSION}"
 	fi
 
+	declare uboot_oci_ref="${uboot_oci_package}:${UBOOT_VERSION}"
+	log info "Using Armbian u-boot OCI ref: '${uboot_oci_ref}'"
+
+	# Obtain the relevant u-boot files from the Armbian OCI artifact; use a Dockerfile+ image + extraction to do so.
+	# The armbian-uboot is a .deb package inside an OCI artifact.
+	# A helper script, as escaping bash into a RUN command in Dockerfile is a pain; included in input_hash later
+	mkdir -p "bootable"
+	declare dockerfile_helper_filename="undefined.sh"
+	produce_dockerfile_helper_apt_oras "bootable/" # will create the helper script in bootable/ directory; sets helper_name
+
+	# Lets create a Dockerfile that will be used to obtain the artifacts needed, using ORAS binary
+	declare -g armbian_uboot_extract_dockerfile="bootable/Dockerfile.autogen.armbian.uboot-${BOARD}-${BRANCH}-${UBOOT_VERSION}"
+	log info "Creating Dockerfile '${armbian_uboot_extract_dockerfile}'... "
+	cat <<- ARMBIAN_ORAS_UBOOT_DOCKERFILE > "${armbian_uboot_extract_dockerfile}"
+		FROM debian:stable AS downloader
+		# Call the helper to install curl, oras, and dpkg-dev
+		ADD ./${dockerfile_helper_filename} /apt-oras-helper.sh
+		RUN bash /apt-oras-helper.sh
+		FROM downloader AS downloaded
+		WORKDIR /armbian/uboot
+		WORKDIR /armbian/deb
+		RUN oras pull "${uboot_oci_ref}"
+		RUN dpkg-deb --extract linux-u-boot-*.deb /armbian/uboot
+		WORKDIR /armbian/uboot
+		WORKDIR /armbian/output/uboot-${BOARD}-${BRANCH}
+		RUN cp -vp /armbian/uboot/usr/lib/linux-u-boot-*/* .
+		RUN cp -vp /armbian/uboot/usr/lib/u-boot/platform_install.sh .
+		WORKDIR /armbian/output
+		RUN tar -czf uboot-${BOARD}-${BRANCH}.tar.gz uboot-${BOARD}-${BRANCH}
+		RUN rm -rf uboot-${BOARD}-${BRANCH}
+		FROM scratch
+		COPY --from=downloaded /armbian/output/* /
+	ARMBIAN_ORAS_UBOOT_DOCKERFILE
+
+	declare input_hash="" short_input_hash=""
+	input_hash="$(cat "${armbian_uboot_extract_dockerfile}" "kernel/${dockerfile_helper_filename}" | sha256sum - | cut -d ' ' -f 1)"
+	short_input_hash="${input_hash:0:8}"
+	log info "Input hash for u-boot: ${input_hash}"
+	log info "Short input hash for u-boot: ${short_input_hash}"
+
+	# Calculate the local image name for the u-boot extraction
+	declare uboot_oci_image="${HOOK_KERNEL_OCI_BASE}-armbian-uboot:${short_input_hash}"
+	log info "Using local image name for u-boot extraction: '${uboot_oci_image}'"
+
+	bat --file-name "Dockerfile" "${armbian_uboot_extract_dockerfile}"
+
+	# Now, build the Dockerfile...
+	log info "Building Dockerfile for u-boot extraction..."
+	docker buildx build --load "--progress=${DOCKER_BUILDX_PROGRESS_TYPE}" -t "${uboot_oci_image}" -f "${armbian_uboot_extract_dockerfile}" bootable
+
+	# Now get at the binaries inside the built image
+	log debug "Docker might emit a warning about mismatched platforms below. It's safe to ignore; the image in question only contains uboot binaries, for the correct arch, even though the image might have been built & tagged on a different arch."
+	docker create --name "export-uboot-${input_hash}" "${uboot_oci_image}" "command_is_irrelevant_here_container_is_never_started"
+	(docker export "export-uboot-${input_hash}" | tar -xO "uboot-${BOARD}-${BRANCH}.tar.gz" > "bootable/uboot-${BOARD}-${BRANCH}.tar.gz") || true # don't fail -- otherwise container is left behind forever
+	docker rm "export-uboot-${input_hash}"
+	log info "Extracted u-boot binaries to 'bootable/uboot-${BOARD}-${BRANCH}.tar.gz'"
+	ls -laht "bootable/uboot-${BOARD}-${BRANCH}.tar.gz"
+
 }
