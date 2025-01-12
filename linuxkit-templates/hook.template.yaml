@@ -80,6 +80,24 @@ onboot:
       - /run:/run
       - /etc/ip/dhcp.sh:/etc/ip/dhcp.sh
       - /dhcpcd.conf:/dhcpcd.conf
+      - /dev:/dev
+    env:
+        - INSECURE=true
+    devices:
+        - path: all
+          type: b
+        - path: all
+          type: c
+        - path: "/dev/ttyS2"
+          type: c
+          major: 4
+          minor: 66
+          mode: "0666"
+        - path: "/dev/ttyFIQ0"
+          type: c
+          major: 253
+          minor: 0
+          mode: "0666"
     runtime:
       mkdir:
         - /var/lib/dhcpcd

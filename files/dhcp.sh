@@ -22,6 +22,12 @@ run_dhcp_client() {
 	fi
 
 	if [ "$one_shot" = "true" ]; then
+		# Hack: console; if ttyFIQ0 is present, link it to ttyS2
+		if [ -e /dev/ttyFIQ0 ]; then
+			ln -s /dev/ttyFIQ0 /dev/ttyS2  || true
+		fi
+
+
 		# always return true for the one shot dhcp call so it doesn't block Hook from starting up.
 		# the --nobackground is not used here because when it is used, dhcpcd doesn't honor the --timeout option
 		# and waits indefinitely for a response. For one shot, we want to timeout after the 30 second default.
