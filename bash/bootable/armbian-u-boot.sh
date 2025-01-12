@@ -104,6 +104,45 @@ function build_bootable_armbian_uboot_rockchip() {
 }
 
 function write_uboot_script_or_extlinux() {
+	# write_uboot_extlinux  "${@}"
+	write_uboot_script "${@}"
+}
+
+function write_uboot_script() {
+	declare fat32_root_dir="${1}"
+	declare boot_cmd_file="${fat32_root_dir}/boot.cmd"
+	cat <<- BOOT_CMD > "${boot_cmd_file}"
+		# Hook u-boot bootscript
+		echo "Starting Tinkerbell Hook boot script..."
+		printenv
+		setenv load_addr "0x9000000"
+		test -n "\${distro_bootpart}" || distro_bootpart=1
+		echo "Boot script loaded from \${devtype} \${devnum}:\${distro_bootpart}"
+		setenv bootargs "${UBOOT_EXTLINUX_CMDLINE}"
+		echo "Booting with: \${bootargs}"
+
+		echo "Loading initramfs... \${ramdisk_addr_r} /initramfs"
+		load \${devtype} \${devnum}:\${distro_bootpart} \${ramdisk_addr_r} /initramfs
+		echo "Loading kernel... \${kernel_addr_r} /vmlinuz"
+		load \${devtype} \${devnum}:\${distro_bootpart} \${kernel_addr_r} /vmlinuz
+		echo "Loading dtb... \${fdt_addr_r} /dtb/${UBOOT_KERNEL_DTB}"
+		load \${devtype} \${devnum}:\${distro_bootpart} \${fdt_addr_r} /dtb/${UBOOT_KERNEL_DTB}
+
+		fdt addr \${fdt_addr_r}
+		fdt resize 65536
+
+		echo "Booting: booti \${kernel_addr_r} \${ramdisk_addr_r} \${fdt_addr_r}"
+		booti \${kernel_addr_r} \${ramdisk_addr_r} \${fdt_addr_r}
+		# Recompile with:
+		# mkimage -C none -A arm -T script -d /boot.cmd /boot.scr
+	BOOT_CMD
+
+	command -v bat && bat --file-name "boot.cmd" "${boot_cmd_file}"
+
+	return 0
+}
+
+function write_uboot_extlinux() {
 	declare fat32_root_dir="${1}"
 	mkdir -p "${fat32_root_dir}/extlinux"
 	declare extlinux_conf="${fat32_root_dir}/extlinux/extlinux.conf"
