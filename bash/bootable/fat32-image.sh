@@ -10,21 +10,74 @@ function create_image_fat32_root_from_dir() {
 
 	# Prepare arguments to virt-make-fs as an array
 	declare -a virt_make_fs_args=()
-	#virt_make_fs_args+=("--verbose")
+	#virt_make_fs_args+=("--verbose") # it is very, very verbose, but reveals how guestfs does the magic.
 	virt_make_fs_args+=("--format=raw")
 	virt_make_fs_args+=("--partition=${partition_type}")
 	virt_make_fs_args+=("--type=vfat")
 	virt_make_fs_args+=("--size=+32M")
 	virt_make_fs_args+=("--label=hook")
 
-	# Create a Dockerfile; install guestfs.
+	# Create a Dockerfile; install guestfs, which does the heavy lifting of creating the GPT image with a FAT32 partition
+	# tl-dr: qemu in usermode, own kernel, /dev/loop. it's very, very slow, as no KVM is used since it's already inside a container.
 
-	# Obtain the relevant fat32 files from the Armbian OCI artifact; use a Dockerfile+ image + image to do so.
-	# The armbian-fat32img is a .deb package inside an OCI artifact.
 	# A helper script, as escaping bash into a RUN command in Dockerfile is a pain; included in input_hash later
 	mkdir -p "bootable"
 	declare dockerfile_helper_filename="undefined.sh"
 	produce_dockerfile_helper_apt_oras "bootable/" # will create the helper script in bootable/ directory; sets helper_name
+
+	cat <<- EOD > "bootable/Dockerfile.autogen.helper.mkfat32.sh"
+		#!/bin/bash
+		set -e
+		set -x
+
+		# Hack: transform the initramfs using mkimage to a u-boot image
+		mkimage -A arm64 -O linux -T ramdisk -C gzip -n uInitrd -d /work/input/initramfs /work/input/initramfs.uimg
+		rm -fv /work/input/initramfs
+		ls -lah /work/input/initramfs.uimg
+
+		# Create a simple tar of the input directory
+		cd /work/input; tar -cvf /work/input.tar .
+
+		truncate -s 512M /output/fat32.img
+		guestfish --rw  < /Dockerfile.autogen.helper.guestfish.script
+		parted /output/fat32.img print
+		sgdisk --print /output/fat32.img
+		sgdisk --info=1 /output/fat32.img
+	EOD
+
+	cat <<- EOD > "bootable/Dockerfile.autogen.helper.guestfish.script"
+		echo 'Adding image...'
+		add /output/fat32.img
+		echo 'Start the guestfish shell...'
+		run
+		echo 'List the partitions...'
+		list-filesystems
+
+		echo 'Create a GPT partition table...'
+		part-init /dev/sda gpt
+
+		echo 'Create a FAT32 partition with an offset'
+		part-add /dev/sda p 2048 1048542
+
+		echo 'Create a FAT32 filesystem with label hook...'
+		mkfs vfat /dev/sda1 label:hook
+
+		echo 'List the partitions and filesystems...'
+		list-partitions
+		list-filesystems
+
+		echo 'Mount the FAT32 filesystem...'
+		mount /dev/sda1 /
+		echo 'Copy the contents of the input tar to the FAT32 filesystem...'
+		tar-in /work/input.tar /
+
+		echo 'Finished'
+		list-partitions
+		list-filesystems
+		ll /
+
+		echo 'Done.'
+	EOD
 
 	# Lets create a Dockerfile that will be used to obtain the artifacts needed, using ORAS binary
 	declare -g mkfat32_dockerfile="bootable/Dockerfile.autogen.mkfat32"
@@ -33,15 +86,14 @@ function create_image_fat32_root_from_dir() {
 		FROM debian:stable AS downloader
 		# Call the helper to install curl, oras, and the guestfs tools; also parted and gdisk
 		ADD ./${dockerfile_helper_filename} /apt-oras-helper.sh
-		RUN bash /apt-oras-helper.sh tree guestfs-tools parted gdisk
+		RUN bash /apt-oras-helper.sh tree guestfs-tools guestfish parted gdisk u-boot-tools
 		FROM downloader AS downloaded
 		ADD ./${fat32_root_dir} /work/input
 		RUN tree /work/input
+		ADD ./Dockerfile.autogen.helper.guestfish.script /Dockerfile.autogen.helper.guestfish.script
+		ADD ./Dockerfile.autogen.helper.mkfat32.sh /Dockerfile.autogen.helper.mkfat32.sh
 		WORKDIR /output
-
-		# Use guestfs to create a GPT image with a single FAT32 partition
-		RUN virt-make-fs ${virt_make_fs_args[*]@Q} /work/input /output/fat32.img
-
+		RUN bash /Dockerfile.autogen.helper.mkfat32.sh
 		FROM scratch
 		COPY --from=downloaded /output/* /
 	MKFAT32_DOCKERFILE
@@ -57,17 +109,15 @@ function create_image_fat32_root_from_dir() {
 	log debug "Using local image name for fat32 image: '${fat32img_oci_image}'"
 	#bat --file-name=Dockerfile "${mkfat32_dockerfile}"
 
-	# Now, build the Dockerfile...
+	# Now, build the D   ockerfile...
 	log info "Building Dockerfile for fat32 image..."
 	docker buildx build --load "--progress=${DOCKER_BUILDX_PROGRESS_TYPE}" -t "${fat32img_oci_image}" -f "${mkfat32_dockerfile}" bootable
 
-	# Now get at the binaries inside the built image
-	log info "Extracting fat32 binaries from built Dockerfile... wait..."
-	log debug "Docker might emit a warning about mismatched platforms below. It's safe to ignore; the image in question only contains fat32img binaries, for the correct arch, even though the image might have been built & tagged on a different arch."
+	# Now get at the image inside the built Docker image
+	log info "Extracting fat32 image from built Dockerfile... wait..."
 	docker create --name "export-fat32img-${input_hash}" "${fat32img_oci_image}" "command_is_irrelevant_here_container_is_never_started"
 	(docker export "export-fat32img-${input_hash}" | tar -xO "fat32.img" > "${output_image}") || true # don't fail -- otherwise container is left behind forever
 	docker rm "export-fat32img-${input_hash}"
-	log info "Extracted fat32 binaries to '${output_image}'"
-	ls -laht "${output_image}"
+	log info "Extracted fat32 image to '${output_image}'"
 
 }

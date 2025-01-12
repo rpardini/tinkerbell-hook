@@ -43,7 +43,27 @@ function build_bootable_armbian_uboot_rockchip() {
 
 	obtain_armbian_uboot_tar_gz_from_oci # takes uboot_oci_package_name, BOARD, BRANCH, UBOOT_VERSION, ARMBIAN_BASE_ORAS_REF and output_uboot_tarball
 
-	ls -laht "${output_uboot_tarball}"
+	# Extract the tarball so we can get at the metadata files inside
+	declare uboot_extract_dir="${bootable_base_dir}/uboot-files"
+	mkdir -p "${uboot_extract_dir}"
+	tar -C "${uboot_extract_dir}" --strip-components=1 -xzf "${output_uboot_tarball}"
+	#tree "${uboot_extract_dir}"
+
+	# Source the platform_install.sh (defines function write_uboot_platform <uboot-bin-dir> <output-device-or-file>)
+	declare platform_install_sh="${uboot_extract_dir}/platform_install.sh"
+	# shellcheck disable=SC1090
+	source "${platform_install_sh}"
+
+	# Source the metadata.sh file; declares UBOOT_PARTITION_TYPE, UBOOT_KERNEL_DTB, UBOOT_KERNEL_SERIALCON, UBOOT_EXTLINUX_PREFER, UBOOT_EXTLINUX_CMDLINE
+	declare metadata_sh="${uboot_extract_dir}/u-boot-metadata.sh"
+	# shellcheck disable=SC1090
+	source "${metadata_sh}"
+
+	log info "u-boot UBOOT_PARTITION_TYPE: ${UBOOT_PARTITION_TYPE}"
+	log info "u-boot UBOOT_KERNEL_DTB: ${UBOOT_KERNEL_DTB}"
+	log info "u-boot UBOOT_KERNEL_SERIALCON: ${UBOOT_KERNEL_SERIALCON}"
+	log info "u-boot UBOOT_EXTLINUX_PREFER: ${UBOOT_EXTLINUX_PREFER}"
+	log info "u-boot UBOOT_EXTLINUX_CMDLINE: ${UBOOT_EXTLINUX_CMDLINE}"
 
 	# Prepare a directory that will be the root of the FAT32 partition
 	declare fat32_root_dir="${bootable_base_dir}/fat32-root"
@@ -62,6 +82,7 @@ function build_bootable_armbian_uboot_rockchip() {
 
 	# @TODO: Prepare an extlinux.conf or boot.scr file with the kernel command line; this is board-specific
 	# it also might require the metadata files from the uboot tarball, as those have details eg the exact DTB to use, console information, etc.
+	write_uboot_script_or_extlinux "${fat32_root_dir}"
 
 	# Show the state
 	tree "${bootable_base_dir}"
@@ -72,6 +93,34 @@ function build_bootable_armbian_uboot_rockchip() {
 	# The u-boot binaries are written _later_ in the process, after the image is created, using Armbian's helper scripts.
 	create_image_fat32_root_from_dir "${bootable_base_dir}/bootable-media-${BOARD}-${BRANCH}.img" "${bootable_dir}/fat32-root"
 
+	# Deploy u-boot binaries to the image; use the function defined in the platform_install.sh script
+	# They should only use 'dd' or such
+	log info "Writing u-boot binaries to the image..."
+	set -x
+	write_uboot_platform "${uboot_extract_dir}" "${bootable_base_dir}/bootable-media-${BOARD}-${BRANCH}.img"
+	set +x
+
+	return 0
+}
+
+function write_uboot_script_or_extlinux() {
+	declare fat32_root_dir="${1}"
+	mkdir -p "${fat32_root_dir}/extlinux"
+	declare extlinux_conf="${fat32_root_dir}/extlinux/extlinux.conf"
+	cat <<- EXTLINUX_CONF > "${extlinux_conf}"
+		DEFAULT hook
+		LABEL hook
+			linux /vmlinuz
+			initrd /initramfs.uimg
+			append ${UBOOT_EXTLINUX_CMDLINE}
+			fdt /dtb/${UBOOT_KERNEL_DTB}
+	EXTLINUX_CONF
+	# @TODO: fdtdir when UBOOT_KERNEL_DTB is unset
+	# @TODO: console?
+
+	command -v bat && bat --file-name "extlinux.conf" "${extlinux_conf}"
+
+	return 0
 }
 
 function obtain_armbian_uboot_tar_gz_from_oci() {
@@ -138,11 +187,9 @@ function obtain_armbian_uboot_tar_gz_from_oci() {
 
 	# Now get at the binaries inside the built image
 	log info "Extracting u-boot binaries from built Dockerfile... wait..."
-	log debug "Docker might emit a warning about mismatched platforms below. It's safe to ignore; the image in question only contains uboot binaries, for the correct arch, even though the image might have been built & tagged on a different arch."
 	docker create --name "export-uboot-${input_hash}" "${uboot_oci_image}" "command_is_irrelevant_here_container_is_never_started"
 	(docker export "export-uboot-${input_hash}" | tar -xO "uboot-${BOARD}-${BRANCH}.tar.gz" > "${output_uboot_tarball}") || true # don't fail -- otherwise container is left behind forever
 	docker rm "export-uboot-${input_hash}"
 	log info "Extracted u-boot binaries to '${output_uboot_tarball}'"
-	ls -laht "${output_uboot_tarball}"
 
 }
