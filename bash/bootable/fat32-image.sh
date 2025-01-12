@@ -8,6 +8,15 @@ function create_image_fat32_root_from_dir() {
 	log info "Creating FAT32 image '${output_image}' from '${fat32_root_dir}'..."
 	log info "Partition type: ${partition_type}; ESP partition: ${esp_partitition}"
 
+	# Prepare arguments to virt-make-fs as an array
+	declare -a virt_make_fs_args=()
+	#virt_make_fs_args+=("--verbose")
+	virt_make_fs_args+=("--format=raw")
+	virt_make_fs_args+=("--partition=${partition_type}")
+	virt_make_fs_args+=("--type=vfat")
+	virt_make_fs_args+=("--size=+32M")
+	virt_make_fs_args+=("--label=hook")
+
 	# Create a Dockerfile; install guestfs.
 
 	# Obtain the relevant fat32 files from the Armbian OCI artifact; use a Dockerfile+ image + image to do so.
@@ -31,7 +40,7 @@ function create_image_fat32_root_from_dir() {
 		WORKDIR /output
 
 		# Use guestfs to create a GPT image with a single FAT32 partition
-		RUN virt-make-fs --verbose --format=raw --partition=gpt --type=vfat --size=+32M --label=hook /work/input /output/fat32.img
+		RUN virt-make-fs ${virt_make_fs_args[*]@Q} /work/input /output/fat32.img
 
 		FROM scratch
 		COPY --from=downloaded /output/* /
@@ -46,6 +55,7 @@ function create_image_fat32_root_from_dir() {
 	# Calculate the local image name for the fat32 image
 	declare fat32img_oci_image="${HOOK_KERNEL_OCI_BASE}-mkfat32:${short_input_hash}"
 	log debug "Using local image name for fat32 image: '${fat32img_oci_image}'"
+	#bat --file-name=Dockerfile "${mkfat32_dockerfile}"
 
 	# Now, build the Dockerfile...
 	log info "Building Dockerfile for fat32 image..."
