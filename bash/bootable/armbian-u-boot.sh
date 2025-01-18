@@ -24,6 +24,8 @@ function build_bootable_armbian_uboot_rockchip() {
 }
 
 function build_bootable_armbian_uboot() {
+	: "${bootable_info['INVENTORY_ID']:?"bootable_info['INVENTORY_ID'] is unset"}"
+
 	declare hook_id="${bootable_info['INVENTORY_ID']}"
 	# UBOOT_TYPE can be either extlinux or bootscript; defaults to bootscript
 	declare uboot_type="${bootable_info['UBOOT_TYPE']:-"bootscript"}"
@@ -109,7 +111,7 @@ function build_bootable_armbian_uboot() {
 	# Get rid of any directories named 'overlays' in the DTB directory?
 	# find "${fat32_root_dir}/dtb" -type d -name 'overlays' -exec rm -rf {} \;
 
-	# @TODO: Prepare an extlinux.conf or boot.scr file with the kernel command line; this is board-specific
+	# Prepare an extlinux.conf or boot.scr file with the kernel command line; this is board-specific
 	# it also might require the metadata files from the uboot tarball, as those have details eg the exact DTB to use, console information, etc.
 	write_uboot_script_or_extlinux "${fat32_root_dir}"
 

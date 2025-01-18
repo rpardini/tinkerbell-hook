@@ -32,7 +32,15 @@ function create_image_fat32_root_from_dir() {
 			mkimage -C none -A arm -T script -d /work/input/boot.cmd /work/input/boot.scr
 		fi
 
-		truncate -s 512M /output/fat32.img
+		# Calculate the size of the image
+		# a) take the size, in megabytes, of /work/input directory
+		# b) add 32mb to it, 16 for the offset and 16 for extra files user might wanna put there
+		declare -i size_mb
+		size_mb="\$(du -s -BM /work/input | cut -f 1 | tr -d 'M')"
+		size_mb="\$((size_mb + 32))"
+		echo "Size of the image: \${size_mb}M" 1>&2
+
+		truncate -s \${size_mb}M /output/fat32.img
 		parted /output/fat32.img mklabel ${partition_type}
 		parted -a optimal /output/fat32.img mkpart primary fat32 16MiB 100%
 		if [ "${partition_type}" == "gpt" ] && [ "${esp_partitition}" == "yes" ]; then
@@ -61,7 +69,6 @@ function create_image_fat32_root_from_dir() {
 		ADD ./${dockerfile_helper_filename} /apt-oras-helper.sh
 		RUN bash /apt-oras-helper.sh parted mtools tree u-boot-tools gdisk
 		ADD ./${fat32_root_dir} /work/input
-		RUN tree /work/input
 		ADD ./Dockerfile.autogen.helper.mkfat32.sh /Dockerfile.autogen.helper.mkfat32.sh
 		WORKDIR /output
 		RUN bash /Dockerfile.autogen.helper.mkfat32.sh
