@@ -66,19 +66,9 @@ function create_image_fat32_root_from_dir() {
 		COPY --from=builder /output/* /
 	MKFAT32_DOCKERFILE
 
-	declare input_hash="" short_input_hash=""
-	input_hash="$(cat "${mkfat32_dockerfile}" "kernel/${dockerfile_helper_filename}" | sha256sum - | cut -d ' ' -f 1)"
-	short_input_hash="${input_hash:0:8}"
-	log debug "Input hash for fat32: ${input_hash}"
-	log debug "Short input hash for fat32: ${short_input_hash}"
-
-	# Calculate the local image name for the fat32 image
-	declare fat32img_oci_image="${HOOK_KERNEL_OCI_BASE}-mkfat32:${short_input_hash}"
-	log debug "Using local image name for fat32 image: '${fat32img_oci_image}'"
-
 	# Now, build the Dockerfile and output the fat32 image directly
 	log info "Building Dockerfile for fat32 image and outputting directly to '${output_image}'..."
-	docker buildx build --output "type=local,dest=${output_dir}" "--progress=${DOCKER_BUILDX_PROGRESS_TYPE}" -t "${fat32img_oci_image}" -f "${mkfat32_dockerfile}" bootable
+	docker buildx build --output "type=local,dest=${output_dir}" "--progress=${DOCKER_BUILDX_PROGRESS_TYPE}" -f "${mkfat32_dockerfile}" bootable
 
 	# Ensure the output image is named correctly; grab its size
 	if [ -f "${output_image}" ]; then
