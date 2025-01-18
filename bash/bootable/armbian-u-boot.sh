@@ -73,7 +73,6 @@ function build_bootable_armbian_uboot() {
 	declare uboot_extract_dir="${bootable_base_dir}/uboot-files"
 	mkdir -p "${uboot_extract_dir}"
 	tar -C "${uboot_extract_dir}" --strip-components=1 -xzf "${output_uboot_tarball}"
-	#tree "${uboot_extract_dir}"
 
 	# Source the platform_install.sh (defines function write_uboot_platform <uboot-bin-dir> <output-device-or-file>)
 	declare platform_install_sh="${uboot_extract_dir}/platform_install.sh"
@@ -115,7 +114,6 @@ function build_bootable_armbian_uboot() {
 	write_uboot_script_or_extlinux "${fat32_root_dir}"
 
 	# Show the state
-	tree "${bootable_base_dir}"
 	du -h -d 1 "${bootable_base_dir}"
 
 	# Use a Dockerfile to assemble a GPT image, with a single FAT32 partition, containing the files in the fat32-root directory
@@ -127,11 +125,18 @@ function build_bootable_armbian_uboot() {
 	ls -lah "${bootable_base_dir}/bootable-media-${BOARD}-${BRANCH}.img"
 
 	# Deploy u-boot binaries to the image; use the function defined in the platform_install.sh script
-	# They should only use 'dd' or such
+	# They should only use 'dd' or such; we've special handling for dd, to add 'conv=trunc'
+
+	# shellcheck disable=SC2317 # used by write_uboot_platform
+	function dd() {
+		# We're going to use dd to write the u-boot binaries to the image; log the command and then run it
+		log info "dd: ${1} + conv=notrunc"
+		log debug "dd: ${*@Q}"
+		command dd "$@" "conv=notrunc"
+	}
+
 	log info "Writing u-boot binaries to the image..."
-	set -x
 	write_uboot_platform "${uboot_extract_dir}" "${bootable_base_dir}/bootable-media-${BOARD}-${BRANCH}.img"
-	set +x
 
 	log info "Show info about produced image (with written u-boot)..."
 	ls -lah "${bootable_base_dir}/bootable-media-${BOARD}-${BRANCH}.img"
@@ -189,13 +194,18 @@ function write_uboot_script() {
 		booti \${kernel_addr_r} \${ramdisk_addr_r} \${fdt_addr_r}
 	BOOT_CMD
 
-	command -v bat && bat --file-name "boot.scr" "${boot_cmd_file}"
+	command -v bat &> /dev/null && bat --file-name "boot.scr" "${boot_cmd_file}"
 
 	return 0
 }
 
 function write_uboot_extlinux() {
 	declare fat32_root_dir="${1}"
+
+	declare console_extra_args="${bootable_info['CONSOLE_EXTRA_ARGS']:-""}"
+	declare bootargs="${UBOOT_EXTLINUX_CMDLINE} console=${UBOOT_KERNEL_SERIALCON}${console_extra_args}"
+	log info "Writing extlinux.conf; kernel cmdline: ${bootargs}"
+
 	mkdir -p "${fat32_root_dir}/extlinux"
 	declare extlinux_conf="${fat32_root_dir}/extlinux/extlinux.conf"
 	cat <<- EXTLINUX_CONF > "${extlinux_conf}"
@@ -203,7 +213,7 @@ function write_uboot_extlinux() {
 		LABEL hook
 			linux /vmlinuz
 			initrd /initramfs
-			append ${UBOOT_EXTLINUX_CMDLINE} console=${UBOOT_KERNEL_SERIALCON},1500000
+			append ${bootargs}
 			fdt /dtb/${UBOOT_KERNEL_DTB}
 	EXTLINUX_CONF
 	# @TODO: fdtdir when UBOOT_KERNEL_DTB is unset
