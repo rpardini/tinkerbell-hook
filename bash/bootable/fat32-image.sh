@@ -1,8 +1,8 @@
 function create_image_fat32_root_from_dir() {
 	declare output_image="${1}"
 	declare fat32_root_dir="${2}"
-	declare partition_type="gpt" # or, "mbr"
-	declare esp_partitition="no" # or, "yes" -- only for GPT; mark the fat32 partition as an ESP or not
+	declare partition_type="${partition_type:-"gpt"}" # or, "mbr"
+	declare esp_partitition="${esp_partitition:-"no"}" # or, "yes" -- only for GPT; mark the fat32 partition as an ESP or not
 
 	# Show whats about to be done
 	log info "Creating FAT32 image '${output_image}' from '${fat32_root_dir}'..."
@@ -14,7 +14,7 @@ function create_image_fat32_root_from_dir() {
 	produce_dockerfile_helper_apt_oras "bootable/" # will create the helper script in bootable/ directory; sets helper_name
 
 	# Lets create a Dockerfile that will be used to create the FAT32 image
-	cat <<- EOD > "bootable/Dockerfile.autogen.helper.mkfat32.sh"
+	cat <<- MKFAT32_SCRIPT > "bootable/Dockerfile.autogen.helper.mkfat32.sh"
 		#!/bin/bash
 		set -e
 		set -x
@@ -33,7 +33,9 @@ function create_image_fat32_root_from_dir() {
 		truncate -s 512M /output/fat32.img
 		parted /output/fat32.img mklabel ${partition_type}
 		parted -a optimal /output/fat32.img mkpart primary fat32 16MiB 100%
-		if [ "${partition_type}" == "gpt" ] && [ "${esp_partitition}" == "yes" ]; then parted /output/fat32.img set 1 esp on; fi
+		if [ "${partition_type}" == "gpt" ] && [ "${esp_partitition}" == "yes" ]; then
+			parted /output/fat32.img set 1 esp on;
+		fi
 		mformat -i /output/fat32.img@@16M -F -v HOOK ::
 		mcopy -i /output/fat32.img@@16M -s /work/input/* ::
 		# list all the files in the fat32.img
@@ -42,7 +44,7 @@ function create_image_fat32_root_from_dir() {
 		parted /output/fat32.img print
 		sgdisk --print /output/fat32.img
 		sgdisk --info=1 /output/fat32.img
-	EOD
+	MKFAT32_SCRIPT
 
 	# Lets create a Dockerfile that will be used to obtain the artifacts needed, using ORAS binary
 	declare -g mkfat32_dockerfile="bootable/Dockerfile.autogen.mkfat32"
