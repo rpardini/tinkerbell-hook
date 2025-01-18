@@ -19,6 +19,20 @@ function build_bootable_armbian_uboot_rockchip() {
 	# UBOOT_TYPE can be either extlinux or bootscript; defaults to bootscript
 	declare uboot_type="${bootable_info['UBOOT_TYPE']:-"bootscript"}"
 
+	declare -A hook_files=(
+		["kernel"]="vmlinuz-${hook_id}"
+		["initrd"]="initramfs-${hook_id}"
+		["dtbs"]="dtbs-${hook_id}.tar.gz"
+	)
+
+	# Check if all the required files are present; if not, give instructions on how to build kernel and hook $hook_id
+	for file in "${!hook_files[@]}"; do
+		if [[ ! -f "out/hook/${hook_files[$file]}" ]]; then
+			log error "Required file 'out/hook/${hook_files[$file]}' not found; please build the kernel and hook ${hook_id} first: ./build.sh kernel ${hook_id} && ./build.sh build ${hook_id}"
+			exit 1
+		fi
+	done
+
 	log info "Building Armbian u-boot for Rockchip for hook ${hook_id} with type ${uboot_type}"
 
 	# if BOARD is unset, bail
