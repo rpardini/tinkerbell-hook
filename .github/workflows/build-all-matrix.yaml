@@ -10,24 +10,24 @@ on:
       - main
 
 env: # Global environment, passed to all jobs & all steps
-  # Default to quay.io, which is also the default for the CLI. 
+  # Default to quay.io, which is also the default for the CLI.
   # Allow to use ghcr.io as an alternative, change & uncomment below:
   REGISTRY: "ghcr.io" # or ghcr.io, determines which will be logged-in to
   HOOK_KERNEL_OCI_BASE: "ghcr.io/${{ github.repository_owner }}/tinkerbell/hook-kernel"
   HOOK_LK_CONTAINERS_OCI_BASE: "ghcr.io/${{ github.repository_owner }}/tinkerbell/"
-  
+
   # Apart from the quay/ghcr coordinates above (used for both pulling & pushing), we might also want to
   # log in to DockerHub (with a read-only token) so we aren't hit by rate limits when pulling the linuxkit pkgs.
   # To do so, set the secret DOCKERHUB_USERNAME and DOCKERHUB_PASSWORD in the repo secrets, and set the below to yes.
   LOGIN_TO_DOCKERHUB: "yes"
-  
+
   HOOK_VERSION: "0.10.0-build-${{github.run_number}}" # Use a forced Hook version
-  
+
   # Which flavors to build? space separated list, must match one of the TAG='s in flavors (this is used by matrix_prep job in gha-matrix command)
   CI_TAGS: "standard armbian-sbc armbian-uefi lts" # 'dev' is not included
-  
+
   # GHA runner configuration. See bash/json-matrix.sh for more details.
-  # CI_RUNNER_LK_CONTAINERS_ARM64: "ARM64" # Use a self-hosted runner with the "ARM64" tag for the ARM64 builds of LK containers
+  CI_RUNNER_LK_CONTAINERS_ARM64: "ubuntu-24.04-arm" # GH-hosted arm64 runners are here! for the ARM64 builds of LK containers
   # CI_RUNNER_LK_CONTAINERS_AMD64: "X64" # Use a self-hosted runner with the "X86" tag for the AMD64 builds of LK containers
   # CI_RUNNER_LK_ARM64: "ARM64" # Use a self-hosted runner with the "ARM64" tag for the ARM64 linuxkit builds
   # CI_RUNNER_LK_AMD64: "X64" # Use a self-hosted runner with the "X86" tag for the AMD64 linuxkit builds
@@ -36,7 +36,7 @@ env: # Global environment, passed to all jobs & all steps
 
 
 jobs:
-  
+
   matrix_prep:
     name: "Prepare matrix JSON"
     runs-on: ubuntu-latest
@@ -59,7 +59,7 @@ jobs:
       - name: Run the matrix JSON preparation bash script
         id: prepare-matrix
         run: bash build.sh gha-matrix # This sets the output "kernels_json" & "lkcontainers_json" & "lk_hooks_json" internally
-  
+
   build-linuxkit-containers:
     needs: [ matrix_prep ]
     runs-on: "${{ matrix.runner }}" # the runner to use is determined by the 'gha-matrix' code
@@ -93,7 +93,7 @@ jobs:
           DOCKER_ARCH: "${{ matrix.docker_arch }}"
           DO_PUSH: "${{ github.ref == 'refs/heads/main' && 'yes' || 'no' }}"
         run: bash build.sh linuxkit-containers
-  
+
   build-kernels:
     needs: [ matrix_prep ] # depend on the previous job...
     runs-on: "${{ matrix.runner }}" # the runner to use is determined by the 'gha-matrix' code
