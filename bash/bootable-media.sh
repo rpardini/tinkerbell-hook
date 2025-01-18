@@ -48,6 +48,7 @@ function get_bootable_info_dict() {
 		exit 1
 	fi
 	log debug "Bootable data for '${bootable}': ${bootable_data_str}"
+	declare -g -A bootable_info
 	eval "bootable_info=(${bootable_data_str})"
 
 	# Post process; calculate bash function names given the handler
@@ -58,5 +59,8 @@ function get_bootable_info_dict() {
 		log error "No TAG found for bootable '${bootable}'"
 		exit 1
 	fi
+
+	# Make read-only
+	declare -g -r -A bootable_info
 
 }

@@ -11,10 +11,19 @@
 # 1) (A) Obtain grub somehow; LinuxKit has them ready-to-go in a Docker image.
 # 1) (B) Obtain the rpi firmware files (bootcode.bin, start.elf, fixup.dat) from the RaspberryPi Foundation
 # 2) Prepare the FAT32 contents; kernel/initrd, grub.conf, config.txt, cmdline.txt, extlinux.conf depending on scenario
-# 3) Create a GPT+ESP, GTP+non-ESP, or MBR partition table image with the contents of the FAT32 (use libguestfs)
+# 3) Create a GPT+ESP, GTP+non-ESP, or MBR partition table image with the contents of the FAT32 (use mtools)
 # 4) For the scenarios with u-boot, write u-boot binaries to the correct offsets in the image.
 
+function build_bootable_armbian_uboot_amlogic() {
+	declare partition_type="msdos" # amlogic boot media must be MBR, as u-boot offsets conflict with GPT
+	build_bootable_armbian_uboot
+}
+
 function build_bootable_armbian_uboot_rockchip() {
+	build_bootable_armbian_uboot
+}
+
+function build_bootable_armbian_uboot() {
 	declare hook_id="${bootable_info['INVENTORY_ID']}"
 	# UBOOT_TYPE can be either extlinux or bootscript; defaults to bootscript
 	declare uboot_type="${bootable_info['UBOOT_TYPE']:-"bootscript"}"
@@ -33,7 +42,7 @@ function build_bootable_armbian_uboot_rockchip() {
 		fi
 	done
 
-	log info "Building Armbian u-boot for Rockchip for hook ${hook_id} with type ${uboot_type}"
+	log info "Building Armbian u-boot for hook ${hook_id} with type ${uboot_type}"
 
 	# if BOARD is unset, bail
 	if [[ -z "${BOARD}" ]]; then
@@ -48,7 +57,7 @@ function build_bootable_armbian_uboot_rockchip() {
 	fi
 
 	# Prepare the base working directory in bootable/
-	declare bootable_dir="rockchip-uboot-${BOARD}-${BRANCH}"
+	declare bootable_dir="armbian-uboot-${BOARD}-${BRANCH}"
 	declare bootable_base_dir="bootable/${bootable_dir}"
 	rm -rf "${bootable_base_dir}"
 	mkdir -p "${bootable_base_dir}"
@@ -98,8 +107,8 @@ function build_bootable_armbian_uboot_rockchip() {
 	mkdir -p "${fat32_root_dir}/dtb"
 	# Extract the DTB .tar.gz into the root of the FAT32 partition; skip the first directory of the path of the extracted files
 	tar -C "${fat32_root_dir}/dtb" --strip-components=1 -xzf "out/hook/dtbs-${hook_id}.tar.gz"
-	# Get rid of any directories named 'overlays' in the DTB directory
-	find "${fat32_root_dir}/dtb" -type d -name 'overlays' -exec rm -rf {} \;
+	# Get rid of any directories named 'overlays' in the DTB directory?
+	# find "${fat32_root_dir}/dtb" -type d -name 'overlays' -exec rm -rf {} \;
 
 	# @TODO: Prepare an extlinux.conf or boot.scr file with the kernel command line; this is board-specific
 	# it also might require the metadata files from the uboot tarball, as those have details eg the exact DTB to use, console information, etc.
@@ -127,7 +136,7 @@ function build_bootable_armbian_uboot_rockchip() {
 	log info "Show info about produced image (with written u-boot)..."
 	ls -lah "${bootable_base_dir}/bootable-media-${BOARD}-${BRANCH}.img"
 
-	log info "Done building Armbian u-boot for Rockchip for hook ${hook_id} with type ${uboot_type}"
+	log info "Done building Armbian u-boot for hook ${hook_id} with type ${uboot_type}"
 
 	return 0
 }

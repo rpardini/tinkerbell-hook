@@ -53,6 +53,7 @@ function produce_armbian_kernel_inventory() {
 	### SBC-oriented:
 	## Armbian meson64 (Amlogic) edge Khadas VIM3/3L, Radxa Zero/2, LibreComputer Potatos, and many more
 	define_id "armbian-meson64-edge" METHOD='armbian' ARCH='aarch64' TAG='armbian-sbc' ARMBIAN_KERNEL_ARTIFACT='kernel-meson64-edge'
+	add_bootable_id "uboot-aml" HANDLER='armbian_uboot_amlogic' TAG='armbian-sbc' UBOOT_TYPE='extlinux' # all meson64, mainline kernel and u-boot, uses extlinux to boot
 
 	## Armbian bcm2711 (Broadcom) current, from RaspberryPi Foundation with many CNCF-landscape fixes and patches; for the RaspberryPi 3b+/4b/5
 	define_id "armbian-bcm2711-current" METHOD='armbian' ARCH='aarch64' TAG='armbian-sbc' ARMBIAN_KERNEL_ARTIFACT='kernel-bcm2711-current'

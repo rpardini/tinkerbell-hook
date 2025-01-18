@@ -2,7 +2,7 @@ function create_image_fat32_root_from_dir() {
 	declare output_dir="${1}"
 	declare output_filename="${2}"
 	declare fat32_root_dir="${3}"
-	declare partition_type="${partition_type:-"gpt"}"  # or, "mbr"
+	declare partition_type="${partition_type:-"gpt"}"  # or, "msdos"
 	declare esp_partitition="${esp_partitition:-"no"}" # or, "yes" -- only for GPT; mark the fat32 partition as an ESP or not
 	declare output_image="${output_dir}/${output_filename}"
 
@@ -44,8 +44,11 @@ function create_image_fat32_root_from_dir() {
 		mdir -i /output/fat32.img@@16M -s
 
 		parted /output/fat32.img print
-		sgdisk --print /output/fat32.img
-		sgdisk --info=1 /output/fat32.img
+		if [ "${partition_type}" == "gpt" ]; then
+			sgdisk --print /output/fat32.img
+			sgdisk --info=1 /output/fat32.img
+		fi
+
 		mv -v /output/fat32.img /output/${output_filename}
 	MKFAT32_SCRIPT
 
