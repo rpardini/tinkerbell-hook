@@ -53,8 +53,8 @@ function create_image_fat32_root_from_dir() {
 		echo 'Create a GPT partition table...'
 		part-init /dev/sda gpt
 
-		echo 'Create a FAT32 partition with an offset'
-		part-add /dev/sda p 2048 1048542
+		echo 'Create a FAT32 partition with a 16mb offset'
+		part-add /dev/sda p 32768 1048542
 
 		echo 'Create a FAT32 filesystem with label hook...'
 		mkfs vfat /dev/sda1 label:hook

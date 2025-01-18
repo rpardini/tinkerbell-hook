@@ -16,7 +16,10 @@
 
 function build_bootable_armbian_uboot_rockchip() {
 	declare hook_id="${bootable_info['INVENTORY_ID']}"
-	log info "Building Armbian u-boot for Rockchip"
+	# UBOOT_TYPE can be either extlinux or bootscript; defaults to bootscript
+	declare uboot_type="${bootable_info['UBOOT_TYPE']:-"bootscript"}"
+
+	log info "Building Armbian u-boot for Rockchip for hook ${hook_id} with type ${uboot_type}"
 
 	# if BOARD is unset, bail
 	if [[ -z "${BOARD}" ]]; then
@@ -64,6 +67,7 @@ function build_bootable_armbian_uboot_rockchip() {
 	log info "u-boot UBOOT_KERNEL_SERIALCON: ${UBOOT_KERNEL_SERIALCON}"
 	log info "u-boot UBOOT_EXTLINUX_PREFER: ${UBOOT_EXTLINUX_PREFER}"
 	log info "u-boot UBOOT_EXTLINUX_CMDLINE: ${UBOOT_EXTLINUX_CMDLINE}"
+	log info "u-boot uboot_type: ${uboot_type}"
 
 	# Prepare a directory that will be the root of the FAT32 partition
 	declare fat32_root_dir="${bootable_base_dir}/fat32-root"
@@ -79,7 +83,7 @@ function build_bootable_armbian_uboot_rockchip() {
 	# DTBs go into a dtb subdirectory
 	mkdir -p "${fat32_root_dir}/dtb"
 	# Extract the DTB .tar.gz into the root of the FAT32 partition; skip the first directory of the path of the extracted files
-	tar -C "${fat32_root_dir}/dtb" --strip-components=1 -xzf "out/hook/dtbs-armbian-rk35xx-vendor.tar.gz"
+	tar -C "${fat32_root_dir}/dtb" --strip-components=1 -xzf "out/hook/dtbs-${hook_id}.tar.gz"
 	# Get rid of any directories named 'overlays' in the DTB directory
 	find "${fat32_root_dir}/dtb" -type d -name 'overlays' -exec rm -rf {} \;
 
@@ -96,6 +100,9 @@ function build_bootable_armbian_uboot_rockchip() {
 	# The u-boot binaries are written _later_ in the process, after the image is created, using Armbian's helper scripts.
 	create_image_fat32_root_from_dir "${bootable_base_dir}/bootable-media-${BOARD}-${BRANCH}.img" "${bootable_dir}/fat32-root"
 
+	log info "Show info about produced image..."
+	ls -lah "${bootable_base_dir}/bootable-media-${BOARD}-${BRANCH}.img"
+
 	# Deploy u-boot binaries to the image; use the function defined in the platform_install.sh script
 	# They should only use 'dd' or such
 	log info "Writing u-boot binaries to the image..."
@@ -103,12 +110,32 @@ function build_bootable_armbian_uboot_rockchip() {
 	write_uboot_platform "${uboot_extract_dir}" "${bootable_base_dir}/bootable-media-${BOARD}-${BRANCH}.img"
 	set +x
 
+	log info "Show info about produced image (with written u-boot)..."
+	ls -lah "${bootable_base_dir}/bootable-media-${BOARD}-${BRANCH}.img"
+
+	log info "Done building Armbian u-boot for Rockchip for hook ${hook_id} with type ${uboot_type}"
+
 	return 0
 }
 
 function write_uboot_script_or_extlinux() {
-	# write_uboot_extlinux  "${@}"
-	write_uboot_script "${@}"
+	# choose with a case based on uboot_type
+	case "${uboot_type}" in
+		"extlinux")
+			log info "Writing extlinux.conf..."
+			write_uboot_extlinux "${@}"
+			;;
+
+		"bootscript")
+			log info "Writing boot.scr..."
+			write_uboot_script "${@}"
+			;;
+
+		*)
+			log error "Unknown uboot_type: ${uboot_type}"
+			exit 1
+			;;
+	esac
 }
 
 function write_uboot_script() {
@@ -152,12 +179,11 @@ function write_uboot_extlinux() {
 		DEFAULT hook
 		LABEL hook
 			linux /vmlinuz
-			initrd /initramfs.uimg
-			append ${UBOOT_EXTLINUX_CMDLINE}
+			initrd /initramfs
+			append ${UBOOT_EXTLINUX_CMDLINE} console=${UBOOT_KERNEL_SERIALCON},1500000
 			fdt /dtb/${UBOOT_KERNEL_DTB}
 	EXTLINUX_CONF
 	# @TODO: fdtdir when UBOOT_KERNEL_DTB is unset
-	# @TODO: console?
 
 	command -v bat && bat --file-name "extlinux.conf" "${extlinux_conf}"
 
