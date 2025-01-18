@@ -1,8 +1,10 @@
 function create_image_fat32_root_from_dir() {
-	declare output_image="${1}"
-	declare fat32_root_dir="${2}"
-	declare partition_type="${partition_type:-"gpt"}" # or, "mbr"
+	declare output_dir="${1}"
+	declare output_filename="${2}"
+	declare fat32_root_dir="${3}"
+	declare partition_type="${partition_type:-"gpt"}"  # or, "mbr"
 	declare esp_partitition="${esp_partitition:-"no"}" # or, "yes" -- only for GPT; mark the fat32 partition as an ESP or not
+	declare output_image="${output_dir}/${output_filename}"
 
 	# Show whats about to be done
 	log info "Creating FAT32 image '${output_image}' from '${fat32_root_dir}'..."
@@ -44,6 +46,7 @@ function create_image_fat32_root_from_dir() {
 		parted /output/fat32.img print
 		sgdisk --print /output/fat32.img
 		sgdisk --info=1 /output/fat32.img
+		mv -v /output/fat32.img /output/${output_filename}
 	MKFAT32_SCRIPT
 
 	# Lets create a Dockerfile that will be used to obtain the artifacts needed, using ORAS binary
@@ -73,14 +76,17 @@ function create_image_fat32_root_from_dir() {
 	declare fat32img_oci_image="${HOOK_KERNEL_OCI_BASE}-mkfat32:${short_input_hash}"
 	log debug "Using local image name for fat32 image: '${fat32img_oci_image}'"
 
-	# Now, build the Dockerfile...
-	log info "Building Dockerfile for fat32 image..."
-	docker buildx build --load "--progress=${DOCKER_BUILDX_PROGRESS_TYPE}" -t "${fat32img_oci_image}" -f "${mkfat32_dockerfile}" bootable
+	# Now, build the Dockerfile and output the fat32 image directly
+	log info "Building Dockerfile for fat32 image and outputting directly to '${output_image}'..."
+	docker buildx build --output "type=local,dest=${output_dir}" "--progress=${DOCKER_BUILDX_PROGRESS_TYPE}" -t "${fat32img_oci_image}" -f "${mkfat32_dockerfile}" bootable
 
-	# Now get at the image inside the built Docker image
-	log info "Extracting fat32 image from built Dockerfile... wait..."
-	docker create --name "export-fat32img-${input_hash}" "${fat32img_oci_image}" "command_is_irrelevant_here_container_is_never_started"
-	(docker export "export-fat32img-${input_hash}" | tar -xO "fat32.img" > "${output_image}") || true # don't fail -- otherwise container is left behind forever
-	docker rm "export-fat32img-${input_hash}"
-	log info "Extracted fat32 image to '${output_image}'"
+	# Ensure the output image is named correctly; grab its size
+	if [ -f "${output_image}" ]; then
+		declare fat32img_size
+		fat32img_size="$(du -h "${output_image}" | cut -f 1)"
+		log info "Built fat32 image '${output_image}' (${fat32img_size})"
+	else
+		log error "Failed to build fat32 image, missing '${output_image}'"
+		exit 1
+	fi
 }

@@ -112,7 +112,7 @@ function build_bootable_armbian_uboot_rockchip() {
 	# Use a Dockerfile to assemble a GPT image, with a single FAT32 partition, containing the files in the fat32-root directory
 	# This is common across all GPT-based bootable media; the only difference is the ESP flag, which is set for UEFI bootable media but not for Rockchip/RaspberryPi
 	# The u-boot binaries are written _later_ in the process, after the image is created, using Armbian's helper scripts.
-	create_image_fat32_root_from_dir "${bootable_base_dir}/bootable-media-${BOARD}-${BRANCH}.img" "${bootable_dir}/fat32-root"
+	create_image_fat32_root_from_dir "${bootable_base_dir}" "bootable-media-${BOARD}-${BRANCH}.img" "${bootable_dir}/fat32-root"
 
 	log info "Show info about produced image..."
 	ls -lah "${bootable_base_dir}/bootable-media-${BOARD}-${BRANCH}.img"
