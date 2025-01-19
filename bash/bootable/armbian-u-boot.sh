@@ -167,6 +167,7 @@ function build_bootable_armbian_uboot() {
 	ls -lah "${bootable_base_dir}/bootable-media-${BOARD}-${BRANCH}.img"
 
 	log info "Done building Armbian u-boot for hook ${hook_id} with type ${uboot_type}"
+	output_bootable_media "${bootable_base_dir}/bootable-media-${BOARD}-${BRANCH}.img" "hook-bootable-${BOARD}-${BRANCH}.img"
 
 	return 0
 }

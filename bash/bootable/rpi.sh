@@ -66,6 +66,7 @@ function build_bootable_rpi_firmware() {
 	ls -lah "${bootable_base_dir}/bootable-media-rpi.img"
 
 	log info "Done building rpi bootable for hook ${hook_id}"
+	output_bootable_media "${bootable_base_dir}/bootable-media-rpi.img" "hook-bootable-rpi.img"
 
 	return 0
 

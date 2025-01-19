@@ -61,3 +61,15 @@ function get_bootable_info_dict() {
 		exit 1
 	fi
 }
+
+function output_bootable_media() {
+	log warn "would output output_bootable_media: '${*}'"
+	declare input_file="${1}"
+	declare output_fn="${2}"
+	declare full_output_fn="out/${output_fn}.xz"
+
+	# Use pixz to compress the image; use all CPU cores, default compression level
+	pixz -e "${input_file}" > "${full_output_fn}"
+
+	return 0
+}
