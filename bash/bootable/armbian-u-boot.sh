@@ -14,12 +14,35 @@
 # 3) Create a GPT+ESP, GTP+non-ESP, or MBR partition table image with the contents of the FAT32 (use mtools)
 # 4) For the scenarios with u-boot, write u-boot binaries to the correct offsets in the image.
 
+function list_bootable_armbian_uboot_amlogic() {
+	declare -g -A bootable_boards=()
+	bootable_boards["odroidhc4"]="BOARD=odroidhc4 BRANCH=edge"
+	bootable_boards["khadas-vim3"]="BOARD=khadas-vim3 BRANCH=edge"
+}
+
 function build_bootable_armbian_uboot_amlogic() {
 	declare partition_type="msdos" # amlogic boot media must be MBR, as u-boot offsets conflict with GPT
 	build_bootable_armbian_uboot
 }
 
+function list_bootable_armbian_uboot_rockchip() {
+	declare -g -A bootable_boards=()
+	bootable_boards["odroidm1"]="BOARD=odroidm1 BRANCH=edge"
+	bootable_boards["rockpro64"]="BOARD=rockpro64 BRANCH=edge"
+	bootable_boards["nanopct6"]="BOARD=nanopct6 BRANCH=edge"
+	bootable_boards["cm3588-nas"]="BOARD=cm3588-nas BRANCH=edge"
+}
+
 function build_bootable_armbian_uboot_rockchip() {
+	build_bootable_armbian_uboot
+}
+
+function list_bootable_armbian_uboot_rockchip_vendor() {
+	declare -g -A bootable_boards=()
+	bootable_boards["r58x"]="BOARD=mekotronics-r58x-pro BRANCH=vendor"
+}
+
+function build_bootable_armbian_uboot_rockchip_vendor() {
 	build_bootable_armbian_uboot
 }
 

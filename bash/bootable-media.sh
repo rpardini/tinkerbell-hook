@@ -52,6 +52,7 @@ function get_bootable_info_dict() {
 	eval "bootable_info=(${bootable_data_str})"
 
 	# Post process; calculate bash function names given the handler
+	bootable_info['BOOTABLE_LIST_FUNC']="list_bootable_${bootable_info['HANDLER']}"
 	bootable_info['BOOTABLE_BUILD_FUNC']="build_bootable_${bootable_info['HANDLER']}"
 
 	# Ensure bootable_info a valid TAG
@@ -59,8 +60,4 @@ function get_bootable_info_dict() {
 		log error "No TAG found for bootable '${bootable}'"
 		exit 1
 	fi
-
-	# Make read-only
-	declare -g -r -A bootable_info
-
 }
