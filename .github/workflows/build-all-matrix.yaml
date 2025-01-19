@@ -186,13 +186,13 @@ jobs:
             out/*.iso
 
   build-hook-bootable:
-    needs: [ matrix_prep, build-linuxkit-containers, build-kernels ] # depend on the previous job...
+    needs: [ matrix_prep, build-hook-ensemble ] # depend on the previous job...
     runs-on: "${{ matrix.runner }}" # the runner to use is determined by the 'gha-matrix' code
     strategy:
       fail-fast: false # let other jobs try to complete if one fails
       matrix:
         include: ${{ fromJSON(needs.matrix_prep.outputs.bootable_json) }}
-    name: "Hook ${{ matrix.kernel }}"
+    name: "Board ${{matrix.board_id}}"
     steps:
       - name: Checkout build repo
         uses: actions/checkout@v4
