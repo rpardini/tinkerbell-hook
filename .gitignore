@@ -10,6 +10,7 @@ hook*.*.yaml
 out/
 cache/
 bootable/
+!bash/bootable
 *.swp
 .idea
 kernel/Dockerfile.autogen.*

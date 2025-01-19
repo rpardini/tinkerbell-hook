@@ -57,6 +57,7 @@ function produce_armbian_kernel_inventory() {
 
 	## Armbian bcm2711 (Broadcom) current, from RaspberryPi Foundation with many CNCF-landscape fixes and patches; for the RaspberryPi 3b+/4b/5
 	define_id "armbian-bcm2711-current" METHOD='armbian' ARCH='aarch64' TAG='armbian-sbc' ARMBIAN_KERNEL_ARTIFACT='kernel-bcm2711-current'
+	add_bootable_id "rpi" HANDLER='rpi_firmware' TAG='armbian-sbc'
 
 	## Armbian rockchip64 (Rockchip) edge, for many rk356x/3399 SoCs. As of late December 2024, also for rk3588.
 	define_id "armbian-rockchip64-edge" METHOD='armbian' ARCH='aarch64' TAG='armbian-sbc' ARMBIAN_KERNEL_ARTIFACT='kernel-rockchip64-edge'

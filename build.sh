@@ -17,6 +17,7 @@ source bash/kernel/kernel_default.sh
 source bash/kernel/kernel_armbian.sh
 source bash/bootable-media.sh
 source bash/bootable/armbian-u-boot.sh
+source bash/bootable/rpi.sh
 source bash/bootable/fat32-image.sh
 
 ### Initialize the command-line handling. This should behave similar to `make`; PARAM=value pairs are accepted in any order mixed with non-param arguments.
