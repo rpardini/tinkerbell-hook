@@ -238,7 +238,7 @@ jobs:
       - name: Upload bootable media as artifact ${{ matrix.arch.name }}
         uses: actions/upload-artifact@v4
         with:
-          name: "hook-tarball-${{matrix.bootable}}-${{matrix.board_id}}"
+          name: "hook-bootable-${{matrix.bootable}}-${{matrix.board_id}}"
           path: |
             out/*.img.xz
 
@@ -255,7 +255,7 @@ jobs:
       - name: Download built Hook artifacts
         uses: actions/download-artifact@v4
         with:
-          pattern: "hook-tarball-*"
+          pattern: "hook-*"
           merge-multiple: true
 
       - name: Figure Out Commit Short ID
@@ -295,6 +295,7 @@ jobs:
           method: sha512
           patterns: |
             *.tar.gz
+            *.img.xz
             *.iso
 
       # Release the artifacts into GitHub Releases. @TODO this GHA Action is not ideal, uses old nodejs, but I can't find a better one.
@@ -307,5 +308,6 @@ jobs:
           title: "${{needs.matrix_prep.outputs.created}}"
           files: |
             *.tar.gz
+            *.img.xz
             *.iso
             checksum.txt
