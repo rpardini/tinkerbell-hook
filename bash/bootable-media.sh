@@ -76,7 +76,8 @@ function output_bootable_media() {
 
 	# Use pixz to compress the image; use all CPU cores, default compression level
 	log info "Compressing image file ${input_file} to ${full_output_fn} -- wait..."
-	pixz -e "${input_file}" > "${full_output_fn}"
+	pixz -i "${input_file}" -o "${full_output_fn}"
+	ls -lah "${full_output_fn}"
 	log info "Compressed image file ${input_file} to ${full_output_fn}"
 
 	return 0
