@@ -14,3 +14,6 @@ ij_shell_switch_cases_indented = true
 space_redirects = true
 keep_padding = false
 function_next_line = false
+
+[.github/workflows/*.yaml]
+indent_size = 2
