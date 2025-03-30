@@ -134,5 +134,6 @@ function fill_array_bootable_tinkerbell_kernel_parameters() {
 		"grpc_authority=${TINK_SERVER}:${TINK_GRPC_PORT}"
 		"tinkerbell_tls=${TINK_TLS}"
 		"syslog_host=${TINK_SERVER}"
+		"last=option"
 	)
 }
