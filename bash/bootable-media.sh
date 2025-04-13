@@ -116,7 +116,7 @@ function fill_array_bootable_tinkerbell_kernel_parameters() {
 	declare -g -a bootable_tinkerbell_kernel_params=() # output global var
 	declare -r board_id="${1}"                         # board_id is the first argument
 
-	declare TINK_WORKER_IMAGE="${TINK_WORKER_IMAGE:-"ghcr.io/tinkerbell/tink-agent:decd26b"}"
+	declare TINK_WORKER_IMAGE="${TINK_WORKER_IMAGE:-"ghcr.io/tinkerbell/tink-agent:latest"}"
 	declare TINK_TLS="${TINK_TLS:-"false"}"
 	declare TINK_GRPC_PORT="${TINK_GRPC_PORT:-"42113"}"
 	declare TINK_SERVER="${TINK_SERVER:-"tinkerbell"}" # export TINK_SERVER="192.168.66.75"
