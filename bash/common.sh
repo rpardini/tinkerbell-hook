@@ -48,6 +48,8 @@ function log_file_bat() {
 	fi
 	if command -v bat > /dev/null; then
 		bat --color=always "${extra_bat_args[@]}" "${file}"
+	elif command -v batcat > /dev/null; then
+		batcat --color=always "${extra_bat_args[@]}" "${file}"
 	else
 		log "${level}" "'bat' utility not installed; install it to see file contents in logs."
 	fi
