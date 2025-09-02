@@ -249,11 +249,15 @@ jobs:
           DO_BUILD_LK_CONTAINERS: "no" # already built them; this is only for hook/linuxkit.
         run: bash build.sh build "${{ matrix.kernel }}"
 
-      - name: "Build Hook ISO with Kernel ${{matrix.kernel}} (${{ matrix.arch }}) - cache: ${{matrix.gha_cache}}"
-        if: ${{ matrix.build_iso == 'yes' }} # Set via inventory.sh and SUPPORTS_ISO='yes' for each flavor
-        env:
-          DO_BUILD_LK_CONTAINERS: "no" # already built them; this is only for hook/linuxkit.
-        run: bash build.sh build "${{ matrix.kernel }}" LINUXKIT_ISO=yes
+      # Linuxkit binary hardcodes iso-making utility images eg linuxkit/mkimage-iso-efi-initrd:35fa0d91ebdc163a1d2eb82991e563e1ab30ea1b
+      # which get pulled from dockerhub, and hit the DockerHub pull rate limit.
+      # TODO: how to work-around this? we'd need a quay or ghcr.io version, then tag/retag onto the local cache. or something.
+
+      #- name: "Build Hook ISO with Kernel ${{matrix.kernel}} (${{ matrix.arch }}) - cache: ${{matrix.gha_cache}}"
+      #  if: ${{ matrix.build_iso == 'yes' }} # Set via inventory.sh and SUPPORTS_ISO='yes' for each flavor
+      #  env:
+      #    DO_BUILD_LK_CONTAINERS: "no" # already built them; this is only for hook/linuxkit.
+      #  run: bash build.sh build "${{ matrix.kernel }}" LINUXKIT_ISO=yes
 
       - name: Upload deb as artifact ${{ matrix.arch.name }} ${{ matrix.distro }}
         uses: actions/upload-artifact@v6
