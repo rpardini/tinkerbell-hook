@@ -280,8 +280,20 @@ jobs:
       - name: Checkout build repo
         uses: actions/checkout@v4
 
-      - name: Set up Docker Buildx # nb: no need for qemu here, kernels are cross-compiled, instead of the compilation being emulated
+      - name: Set up Docker registry mirror # this is needed because linuxkit pulls images from dockerhub and we want to use a registry mirror to avoid rate limiting
+        uses: docker/setup-docker-action@v4
+        with:
+          daemon-config: |
+            {
+              "registry-mirrors": ["https://mirror.gcr.io"]
+            }
+
+      - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
+        with:
+          buildkitd-config-inline: |
+            [registry."docker.io"]
+              mirrors = ["mirror.gcr.io"]
 
       - name: Docker Login to DockerHub # read-only token, required to be able to pull all the linuxkit pkgs without getting rate limited.
         if: ${{ env.LOGIN_TO_DOCKERHUB == 'yes' && github.ref == 'refs/heads/main' }}
