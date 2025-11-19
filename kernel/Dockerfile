@@ -44,14 +44,6 @@ COPY /configs/${INPUT_DEFCONFIG} /linux/.config
 # Kernel config; copy the correct defconfig as .config, and run olddefconfig
 RUN set -x && make "ARCH=${KERNEL_ARCH}" olddefconfig
 
-# Manipulate some config options, to ensure we have support for certain Hook-required features
-# no matter what the input .config says.
-# Uses scripts/config to set options; this is better than sed'ing .config directly
-# 1) zstd support for initramfs/initramfs decompression
-#RUN <<FORCED_CONFIG_OPTIONS
-#	scripts/config --file .config --enable CONFIG_RD_ZSTD
-#FORCED_CONFIG_OPTIONS
-
 # Use this stage to run kernel configuration tasks like menuconfig / savedefconfig etc with:
 #   docker buildx build --load --progress=plain --build-arg KERNEL_VERSION=5.10.212 --build-arg KERNEL_SERIES=5.10.y -t hook-kernel:builder --target kernel-configurator .
 #   docker run -it -v "$(pwd)":/out-config hook-kernel:builder
