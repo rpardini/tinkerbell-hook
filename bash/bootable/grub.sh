@@ -14,7 +14,12 @@ function build_bootable_grub() {
 
 	declare hook_id="${bootable_info['INVENTORY_ID']}"
 	declare bootable_img="bootable_grub_${OUTPUT_ID}.img"
-	declare kernel_command_line="console=tty0 console=${bootable_info['SERIAL_CONSOLE']}"
+	declare kernel_command_line="console=tty0"
+
+	# if serial console is set, add it to the kernel command line
+	if [[ -n "${bootable_info['SERIAL_CONSOLE']}" ]]; then
+		kernel_command_line+=" console=${bootable_info['SERIAL_CONSOLE']}"
+	fi
 
 	declare has_dtbs="${bootable_info['DTB']}"
 	[[ -z "${has_dtbs}" ]] && has_dtbs="no"
