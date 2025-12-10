@@ -18,14 +18,9 @@ run_dhcp_client() {
 
 	if [ "$one_shot" = "true" ]; then
 		# Hack: console; if ttyFIQ0 is present, link it to ttyS2
-		ls -la /dev || true
-		ls -la /dev/ttyS2  || true
-		ls -la /dev/ttyFIQ0  || true
 		if [ -e /dev/ttyFIQ0 ]; then
 			ln -s /dev/ttyFIQ0 /dev/ttyS2  || true
 		fi
-		ls -la /dev/ttyS2 || true
-		ls -la /dev || true
 
 
 		# always return true for the one shot dhcp call so it doesn't block Hook from starting up.
