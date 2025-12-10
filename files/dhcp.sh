@@ -27,9 +27,23 @@ run_dhcp_client() {
 		# the --nobackground is not used here because when it is used, dhcpcd doesn't honor the --timeout option
 		# and waits indefinitely for a response. For one shot, we want to timeout after the 30 second default.
 		/sbin/dhcpcd -f /dhcpcd.conf --allowinterfaces "${al}" -1 || true
+
 		# use busybox's ntpd to set the time after getting an IP address; don't fail
 		echo 'sleep 1 second before calling ntpd' && sleep 1
-		/usr/sbin/ntpd -n -q -dd -p pool.ntp.org || true
+		if ! /usr/sbin/ntpd -n -q -dd -p pool.ntp.org; then
+			echo 'ntpd call failed; setting time manually and retrying'
+			# set system time to the date of the dhcpd binary file
+			# this should recover from ntpd failures due to time being too far off
+			date -s "$(stat -c %y /sbin/dhcpcd | cut -d'.' -f1)" || true
+			echo 'retrying ntpd call; date is now:' && date
+			if ! /usr/sbin/ntpd -n -q -dd -p pool.ntp.org; then
+				echo 'ntpd call failed again; giving up'
+			else
+				echo 'ntpd retry call succeeded; date is now:' && date
+			fi
+		else
+			echo 'ntpd call succeeded; date is now:' && date
+		fi
 	else
 		/sbin/dhcpcd --nobackground -f /dhcpcd.conf --allowinterfaces "${al}"
 	fi
