@@ -61,6 +61,9 @@ function produce_armbian_kernel_inventory() {
 	define_id "armbian-meson64-edge" METHOD='armbian' ARCH='aarch64' TAG='armbian-sbc' ARMBIAN_KERNEL_ARTIFACT='kernel-meson64-edge' TYPE='external'
 	add_bootable_id "uboot-aml" HANDLER='armbian_uboot_amlogic' TAG='armbian-sbc' UBOOT_TYPE='extlinux' CONSOLE_EXTRA_ARGS=',115200' # all meson64, mainline kernel and u-boot, uses extlinux to boot
 
+	## Armbian meson64 (Amlogic) oldlts (6.12) Odroid-HC4 for stability test under 6.12
+	define_id "armbian-meson64-oldlts" METHOD='armbian' ARCH='aarch64' TAG='armbian-sbc' ARMBIAN_KERNEL_ARTIFACT='kernel-meson64-oldlts' TYPE='external'
+
 	## Armbian bcm2711 (Broadcom) current, from RaspberryPi Foundation with many CNCF-landscape fixes and patches; for the RaspberryPi 3b+/4b/5
 	define_id "armbian-bcm2711-current" METHOD='armbian' ARCH='aarch64' TAG='armbian-sbc' ARMBIAN_KERNEL_ARTIFACT='kernel-bcm2711-current' TYPE='external'
 	add_bootable_id "rpi" HANDLER='rpi_firmware' TAG='armbian-sbc'
